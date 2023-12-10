@@ -1,11 +1,37 @@
 <html>
-<body>
-    <h1>Anti TwitterSpam</h1>
-    ブロック済みツイート数:<div id="blocked"></div>
-    <p>ホワイトリスト</p><br>
+<style>
+.blockedtext {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    padding: 0;
+    margin: 0;
+    color: black;
+}  
+</style>
+<body style="background-color:lightslategray;">
+    <center>　　　<font color="white" size="3" style="vertical-align: top;"><!--<nobr>Anti TwitterSpam</nobr>　--><img src="icon.png" width="30px" style="align-items: center;"></font>　　　</center>
+    <br><center style="position: relative;"><img src="Blocked.png" width="150px" style="vertical-align: text-top; display: block; margin-top:auto;"><div class="blockedtext" style="font-size: 16px;"><nobr>ブロック済みの<br>ツイート数</nobr><br><br><br></div><div style="font-size: 30px;" class="blockedtext"><br><div id="blocked"><font size="2">読み込み中</font></div></div></center>
+    <!--<p>ホワイトリスト</p><br>
     <input type="text" id="useridinput"><button id="addw">追加</button><br>
     <button id="clearbtn">クリア</button><br>
-    <div id="list"></div>
+    <div id="list"></div>--><br>
+    <div style="background-color:white">
+    <style>
+        a, a:visited {
+            color: #0071d1;
+         }
+    </style>
+    <center>
+        <a href="https://github.com/ykundesu/AntiTwitterSpam">
+            ソースコード(Github)
+        </a><br>
+        <a href="https://twitter.com/ReYYYYoking">
+            開発者Twitter
+        </a>
+    </center>
+    </div>
     <script src="popup.js">
     </script>
 </body>

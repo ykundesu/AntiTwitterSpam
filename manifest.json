@@ -1,15 +1,12 @@
 {
-  // 必須
   "manifest_version": 3,
   "name": "Anti TwitterSpam",
   "version": "1.0.0",
-
-  // デザイン整えてから
-  // "action": {
-  // "default_title": "Anti Twitter Spam!",
-  //  "default_popup": "popup.html",
-  //  "default_icon": "icon.png"
-  //},
+  "action": {
+   "default_title": "Anti TwitterSpam!",
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
   "description": "Twitterのスパムにさようならして快適なツイ廃ライフを!",
   "icons": { "256": "icon.png" },
   "content_scripts": [
@@ -29,6 +26,12 @@
       ]
     }
   ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "AntiTwitterSpam@yoking.dev",
+      "strict_min_version": "42.0"
+    }
+  },
   "permissions": [
     "storage",
     "unlimitedStorage",

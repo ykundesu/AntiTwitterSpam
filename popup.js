@@ -1,5 +1,4 @@
 function addwhite() {
-    console.log("ADD")
     let whiteList = GetWhiteList();
     const id = document.getElementById("useridinput").value.replace("@","");
     document.getElementById("useridinput").value = "";
@@ -8,21 +7,32 @@ function addwhite() {
     AddWhiteList(id);
     UpdateShow();
 }
-console.log("called")
+let isblocktaskended = true;
+let lastblocked = -1;
 window.addEventListener('DOMContentLoaded', function () {
-    console.log("Loaded")
+    UpdateBlocked();
+    setInterval(() => {
+        if (isblocktaskended)
+            UpdateBlocked();
+    }, 500);/*
     document.getElementById('addw').addEventListener('click',
         addwhite);
     document.getElementById('clearbtn').addEventListener('click',
-        ClearWhiteList);
-    UpdateBlocked();
-    setInterval(() => {
-        UpdateBlocked();
-    }, 500);
+        ClearWhiteList);*/
 });
 async function UpdateBlocked()
 {
-    document.getElementById("blocked").innerText = await GetBlocked();
+    isblocktaskended = false;
+    await chrome.storage.local.get("BlockedTweetCount", function (nowblocked)
+    {
+        if (nowblocked.BlockedTweetCount == null)
+            nowblocked = 0;
+        else
+            nowblocked = nowblocked.BlockedTweetCount;
+        if (nowblocked != lastblocked)
+            document.getElementById("blocked").innerText = lastblocked = nowblocked;
+        isblocktaskended = true;
+});
 }
 function ClearWhiteList()
 {
@@ -55,8 +65,8 @@ async function GetWhiteList() {
 }
 async function GetBlocked() {
     let blockedGeted = await chrome.storage.local.get("BlockedTweetCount");
-    if (blockedGeted["BlockedTweetCount"])
-        return blockedGeted["BlockedTweetCount"];
+    if (blockedGeted.BlockedTweetCount)
+        return blockedGeted.BlockedTweetCount;
     else
         return 0;
 }
@@ -81,4 +91,4 @@ async function UpdateShow() {
         element.innerHTML += "\n<br><a href='javascript:void(0)' onclick='deleteUser(\"" + whiteuser +"\")'>@" + whiteuser+"</a>";
     }
 }
-UpdateShow();
+// UpdateShow();
