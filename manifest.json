@@ -1,0 +1,43 @@
+{
+  // 必須
+  "manifest_version": 3,
+  "name": "Anti TwitterSpam",
+  "version": "1.0.0",
+
+  // デザイン整えてから
+  // "action": {
+  // "default_title": "Anti Twitter Spam!",
+  //  "default_popup": "popup.html",
+  //  "default_icon": "icon.png"
+  //},
+  "description": "Twitterのスパムにさようならして快適なツイ廃ライフを!",
+  "icons": { "256": "icon.png" },
+  "content_scripts": [
+    {
+      "matches": [ "https://twitter.com/*" ],
+      "js": [ "./content.js" ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon.png"
+      ],
+      "matches": [
+        "https://twitter.com/*"
+      ]
+    }
+  ],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "activeTab",
+    "scripting",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://twitter.com/*"
+  ],
+  "author": "https://twitter.com/ReYYYYoking"
+}
