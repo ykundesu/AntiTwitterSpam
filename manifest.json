@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Anti TwitterSpam",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "action": {
-   "default_title": "Anti TwitterSpam!",
+    "default_title": "Anti TwitterSpam!",
     "default_popup": "popup.html",
     "default_icon": "icon.png"
   },
@@ -11,9 +11,12 @@
   "icons": { "256": "icon.png" },
   "content_scripts": [
     {
-      "matches": [ "https://twitter.com/*" ],
+      "matches": [
+        "https://twitter.com/*",
+        "https://mobile.twitter.com/*"
+      ],
       "js": [ "./content.js" ],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
@@ -22,7 +25,8 @@
         "icon.png"
       ],
       "matches": [
-        "https://twitter.com/*"
+        "https://twitter.com/*",
+        "https://mobile.twitter.com/*"
       ]
     }
   ],
@@ -35,12 +39,11 @@
   "permissions": [
     "storage",
     "unlimitedStorage",
-    "activeTab",
-    "scripting",
     "cookies"
   ],
   "host_permissions": [
-    "https://twitter.com/*"
+    "https://twitter.com/*",
+    "https://mobile.twitter.com/*"
   ],
-  "author": "https://twitter.com/ReYYYYoking"
+  "author":"https://twitter.com/ReYYYYoking"
 }
