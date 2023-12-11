@@ -59,6 +59,23 @@ function GetCookie(name) {
         );
     });
 }
+function GetMeUserId()
+{
+    // 正規表現パターン
+    const pattern = /"screen_name":"([^"]*)"/;
+
+    // マッチング
+    const match = document.body.getElementsByTagName("script")[0].innerText.match(pattern);
+
+    // * の抽出
+    if (match && match.length > 0) {
+        return match[0];
+    } else {
+        console.log("screen_nameが見つかりませんでした。");
+        return null;
+    }
+
+}
 //data-testidがcellInnerDivのやつを渡す。
 //Spamでtrueを返す
 function isSpamTweet(dom, authoruserid, meuserid, username, tweettext, userid, tweetemojicount, doubletexters)
@@ -331,7 +348,7 @@ function UpdateReplyObjects()
     const replys = document.querySelectorAll("div[data-testid='cellInnerDiv']");
     if (replys.length <= 2)
         return;
-    const meuserid = document.querySelector('a[data-testid="AppTabBar_Profile_Link"]').getAttribute("href").replace("/", "");
+    const meuserid = GetMeUserId();//document.querySelector('a[data-testid="AppTabBar_Profile_Link"]').getAttribute("href").replace("/", "");
     const authoruserid = replys[0]?.querySelector(".r-1wvb978 span")?.innerText.replace('@', '').trim().toLowerCase();
     let CurrentUserIds = [];
     let DoubleTexters = [];
