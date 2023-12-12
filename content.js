@@ -2,10 +2,6 @@
 // ・自動ミュート・ブロックの実装(内部APIを叩けずに保留)
 // ・自動報告の実装(内部APIを叩けずに保留)
 // だれかプルリク出して！！！頼む！！！出来なかったんや！！！
-function OnChangeToTweetDetail()
-{
-    
-}
 
 let twitterscript = document.createElement('script')
 twitterscript.src = chrome.runtime.getURL('twitter_script.js')
@@ -48,19 +44,6 @@ function GetTweetText(dom)
             text += node.getAttribute("alt");
     }
     return text;
-}
-function GetCookie(name) {
-    return new Promise((resolve, reject) => {
-        chrome.cookies.get(
-            {
-                url: 'https://twitter.com/',
-                name: name,
-            },
-            cookie => {
-                return cookie ? resolve(cookie.value) : reject(new Error('no cookie'));
-            }
-        );
-    });
 }
 function GetMeUserId()
 {
@@ -161,20 +144,6 @@ function containsEnglishAndNumbers(text) {
 
     return englishNumbersRegex.test(text);
 }
-
-function GetHiraKataCount(text) {
-    if (!containsHiraganaKatakanaOnly(text))
-        return 0;
-    const japaneseChars = Array.from(text).reduce((count, char) => {
-        // 日本語の範囲のUnicodeを指定
-        if (containsHiraganaKatakanaOnly(char)) {
-            count++;
-        }
-        return count;
-    }, 0);
-
-    return japaneseChars;
-}
 function calculateJapanesePercentage(text) {
     if (!containsJapanese(text))
         return 0.0;
@@ -182,24 +151,6 @@ function calculateJapanesePercentage(text) {
     const japaneseChars = Array.from(text).reduce((count, char) => {
         // 日本語の範囲のUnicodeを指定
         if (containsJapanese(char)) {
-            count++;
-        }
-        return count;
-    }, 0);
-
-    if (totalChars === 0) {
-        return 0.0;
-    } else {
-        return japaneseChars / totalChars;
-    }
-}
-function calculateEmojiPercentage(text) {
-    if (!containsEmoji(text))
-        return 0.0;
-    const totalChars = text.length;
-    const japaneseChars = Array.from(text).reduce((count, char) => {
-        // 日本語の範囲のUnicodeを指定
-        if (containsEmoji(char)) {
             count++;
         }
         return count;
@@ -223,32 +174,6 @@ function containsJapanese(text) {
     var japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
 
     return japaneseRegex.test(text);
-}
-function containsEmoji(text) {
-    // 絵文字の正規表現
-    var emojiRegex = /[\uD800-\uDBFF][\uDC00-\uDFFF]/;
-
-    return emojiRegex.test(text);
-}
-// ChildNoteの子要素を再帰的に検索して特定のクラスを持つ要素を取得する関数
-function findElementsByTagOnCheck(parentNode, targetTag, resultArray) {
-    // parentNodeが存在しない場合や子要素がない場合は終了
-    if (!parentNode || !parentNode.children) {
-        return;
-    }
-
-    // 子要素を順番にチェック
-    for (let i = 0; i < parentNode.children.length; i++) {
-        const childNode = parentNode.children[i];
-
-        // 特定のクラスを持つ場合は結果に追加
-        if (childNode.nodeName == targetTag && childNode.ariaLabel != null) {
-            resultArray.push(childNode);
-        }
-
-        // 子要素の中も再帰的に検索
-        findElementsByTag(childNode, targetTag, resultArray);
-    }
 }
 function findElementsByTag(parentNode, targetTag, resultArray) {
     // parentNodeが存在しない場合や子要素がない場合は終了
@@ -630,18 +555,24 @@ else if (isTwitterProfileURL(location.href)) {
         }
     }, 1000);
 }
-setInterval(function () {
-    chrome.storage.local.get("Whitelist", function (whiteListGeted) {
-        if (whiteListGeted.Whitelist)
-            whiteList = whiteListGeted.Whitelist.split('@');
+chrome.storage.onChanged.addListener(function (changes, area) {
+    // ローカルストレージの変更か？
+    if (area !== "local") {
+        return;
+    }
+
+    // changesは変更したプロパティの配列
+    if ("Whitelist" in changes) {
+        if (changes.Whitelist)
+            whiteList = changes.Whitelist.newValue.split('@');
         else
             whiteList = [];
-    });
-    chrome.storage.local.get("BlockedTweetCount", function (BlockedGeted) {
-        if (BlockedGeted.BlockedTweetCount)
-            BlockedTweetCount = BlockedGeted.BlockedTweetCount;
+    }
+    if ("BlockedTweetCount" in changes) {
+        if (changes.BlockedTweetCount)
+            BlockedTweetCount = changes.BlockedTweetCount.newValue;
         else
             BlockedTweetCount = 0
-    });
-}, 1500);
-console.log("Loaded AntiTwitterSpam")
+    }
+
+});"Loaded AntiTwitterSpam")

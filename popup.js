@@ -63,23 +63,12 @@ async function GetWhiteList() {
     }
     return whiteList;
 }
-async function GetBlocked() {
-    let blockedGeted = await chrome.storage.local.get("BlockedTweetCount");
-    if (blockedGeted.BlockedTweetCount)
-        return blockedGeted.BlockedTweetCount;
-    else
-        return 0;
-}
 function isEnglishAlphaNumericUnderscore(str) {
     // 英語の文字、数字、アンダースコアのみを許可する正規表現
     var regex = /^[a-zA-Z0-9_]+$/;
 
     // テストして結果を返す
     return regex.test(str);
-}
-function deleteUser(userid)
-{
-    console.log(userid+" is delete");
 }
 async function UpdateShow() {
     let wl = await GetWhiteList();
@@ -91,4 +80,3 @@ async function UpdateShow() {
         element.innerHTML += "\n<br><a href='javascript:void(0)' onclick='deleteUser(\"" + whiteuser +"\")'>@" + whiteuser+"</a>";
     }
 }
-// UpdateShow();
