@@ -272,7 +272,8 @@ function UpdateNotificationObjects() {
             const tweetid = tweetdetail.id_str;
             SetBlockTweet(reply, styletemp, tweetid);
             const username = tweetdetail.user.name;
-            console.log(username+" was spam! reason:Notification Mention Spam");
+            console.log(username + " was spam! reason:Notification Mention Spam");
+            console.log(username + " is @" + userid)
         }
     }
 
@@ -329,9 +330,10 @@ function UpdateReplyObjects()
         if (replyisfollowing)
         {
             //悪質なサイトを含んでいたらスパム
-            if (isButPageInText(reply, tweetData["tweetText"])) {
-                console.log(tweetData["username"] + " was spam! reason:But page Spam");
-                SetBlockTweet(reply, styletemp, tweetid);
+            if (isButPageInText(reply, tweetdetail.full_text)) {
+                console.log(tweetdetail.user.name + " was spam! reason:But page Spam");
+                console.log(tweetdetail.user.name + " is @" + tweetdetail.user.screen_name)
+                SetBlockTweet(reply, styletemp, tweetdetail.id_str);
             }
             continue;
         }
