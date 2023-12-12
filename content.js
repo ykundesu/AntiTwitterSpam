@@ -329,7 +329,7 @@ function UpdateReplyObjects()
         if (replyisfollowing)
         {
             //悪質なサイトを含んでいたらスパム
-            if (isButPageInText(dom, tweetData["tweetText"])) {
+            if (isButPageInText(reply, tweetData["tweetText"])) {
                 console.log(tweetData["username"] + " was spam! reason:But page Spam");
                 SetBlockTweet(reply, styletemp, tweetid);
             }
