@@ -16,7 +16,9 @@ const ButPages = [
     "jp.topcarweb.com",
     "jp.firstopdesign.com",
     "jp.lot-pets.com",
-    "jp.daily-novel.net"
+    "jp.daily-novel.net",
+    "jp.health-wonderful.com",
+    "knnwork.com"
 ];
 function GetEmojiCount(dom)
 {
@@ -325,7 +327,14 @@ function UpdateReplyObjects()
         if (replyisfollowing == undefined)
             replyisfollowing = false;
         if (replyisfollowing)
+        {
+            //悪質なサイトを含んでいたらスパム
+            if (isButPageInText(dom, tweetData["tweetText"])) {
+                console.log(tweetData["username"] + " was spam! reason:But page Spam");
+                SetBlockTweet(reply, styletemp, tweetid);
+            }
             continue;
+        }
         const replyfollowingcount = tweetdetail.user.friends_count;
         const replyfollowercount = tweetdetail.user.followers_count;
         const replyfulltext = tweetdetail.full_text;
@@ -395,7 +404,8 @@ function isTwitterProfileURL(url) {
 }
 // TwitterのURLを判定する関数
 function isTwitterNotificationURL(url) {
-    return url.endsWith("twitter.com/notifications") || url.endsWith("twitter.com/notifications/");
+    return url.endsWith("twitter.com/notifications") || url.endsWith("twitter.com/notifications/") ||
+        url.endsWith("twitter.com/notifications/mentions") || url.endsWith("twitter.com/notifications/mentions/");
 }
 // TwitterのURLを判定する関数
 function isTweetURL(url) {
@@ -499,7 +509,7 @@ function CheckAndUpdateUrl()
                 }, 750);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
-                    observer.observe(document.getElementsByTagName("section")[0].lastChild.lastChild, {
+                    observer.observe(document.getElementsByTagName("section")[0].parentElement, {
                         attributes: true,
                         childList: true
                     });
@@ -575,4 +585,5 @@ chrome.storage.onChanged.addListener(function (changes, area) {
             BlockedTweetCount = 0
     }
 
-});"Loaded AntiTwitterSpam")
+});
+console.log("Loaded AntiTwitterSpam")
