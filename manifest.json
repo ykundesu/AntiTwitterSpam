@@ -11,22 +11,22 @@
   "icons": { "256": "icon.png" },
   "content_scripts": [
     {
+      "js": [ "content.js" ],
       "matches": [
-        "https://twitter.com/*",
-        "https://mobile.twitter.com/*"
+        "*://twitter.com/*",
+        "*://*.twitter.com/*"
       ],
-      "js": [ "./content.js" ],
       "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
     {
       "resources": [
-        "icon.png"
+        "icon.png","twitter_script.js"
       ],
       "matches": [
-        "https://twitter.com/*",
-        "https://mobile.twitter.com/*"
+        "*://twitter.com/*",
+        "*://*.twitter.com/*"
       ]
     }
   ],
@@ -40,10 +40,6 @@
     "storage",
     "unlimitedStorage",
     "cookies"
-  ],
-  "host_permissions": [
-    "https://twitter.com/*",
-    "https://mobile.twitter.com/*"
   ],
   "author":"https://twitter.com/ReYYYYoking"
 }

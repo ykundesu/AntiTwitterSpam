@@ -8,6 +8,11 @@ function OnChangeToTweetDetail()
 {
     
 }
+
+let twitterscript = document.createElement('script')
+twitterscript.src = chrome.runtime.getURL('twitter_script.js')
+document.documentElement.appendChild(twitterscript);
+
 //悪質なサイトのリスト(偽情報を流すサイトなど)
 //独自調査
 const ButPages = [
@@ -78,46 +83,61 @@ function GetMeUserId()
 }
 //data-testidがcellInnerDivのやつを渡す。
 //Spamでtrueを返す
-function isSpamTweet(dom, authoruserid, meuserid, username, tweettext, userid, tweetemojicount, doubletexters)
+function isSpamTweet(dom, tweetData)/*authoruserid, meuserid, username, tweettext, userid, tweetemojicount, doubletexters)*/
 {
-    if (username == undefined)
+    if (tweetData["username"] == undefined)
         return false;
     //悪質なサイトを含んでいたらスパム
-    if (isButPageInText(dom, tweettext))
+    if (isButPageInText(dom, tweetData["tweetText"]))
     {
-        console.log(username + " was spam! reason:But page Spam");
+        console.log(tweetData["username"] + " was spam! reason:But page Spam");
+        return true;
+    }/*
+    console.log(tweetData["userid"] + "1: " + tweetData["FullText"])
+    console.log(tweetData["userid"] + "2: " + tweetData["FullText"].length)
+    console.log(tweetData["userid"] + "3: " + tweetData["RequoteExist"])
+    console.log(tweetData["userid"] + "4:" + tweetData["username"])
+    console.log(tweetData["userid"] + "5:" + containsJapanese(tweetData["username"]))
+    console.log(tweetData["userid"] + "6:" + tweetData["userpossibly_sensitive"])*/
+    // 内容がほぼ引RTのみだったらスパム
+    if (tweetData["FullText"].length <= 3 && tweetData["RequoteExist"] &&
+        (!containsJapanese(tweetData["username"]) || tweetData["userpossibly_sensitive"]))
+    {
+        console.log(tweetData["username"] + " was spam! reason:Requote Spam");
         return true;
     }
-    //console.log(userid + ":" + tweettext + ":" + tweettext.length)
+    // フォロワー-フォロー中が5万人以上いたらパス
+    if ((tweetData["FollowerCount"] - tweetData["FollowingCount"]) >= 50000)
+        return false;
     // 名前に日本語が入っているかつひらがな・カタカナが含まれていたらパス
-    if (containsHiraganaKatakanaOnly(username))
+    if (containsHiraganaKatakanaOnly(tweetData["username"]))
         return false;
     //投稿者が投稿者自身or自分であればパス
-    if (userid.toLowerCase() == authoruserid ||
-        userid.toLowerCase() == meuserid.toLowerCase())
+    if (tweetData["userid"].toLowerCase() == tweetData["authoruserid"].toLowerCase() ||
+        tweetData["userid"].toLowerCase() == tweetData["meuserid"].toLowerCase())
         return false;
-    // 内容がほぼ引RTのみだったらスパム
-    if (tweettext.length <= 3 && dom.getElementsByClassName("css-175oi2r r-1ssbvtb r-1s2bzr4").length > 0)
-    {
-        console.log(username + " was spam! reason:Requote Spam");
-        return true;
-    }
-    //多分のみだったらスパム
-    if (tweettext.length > 0 && !containsJapanese(tweettext) && !containsEnglishAndNumbers(tweettext) && tweetemojicount > 0 && tweettext.length <= 15) {
-        console.log(username + " was spam! reason:Emoji Spam");
+    //多分絵文字のみだったらスパム
+    if (tweetData["FullText"].length > 0 && !containsJapanese(tweetData["FullText"]) && !containsEnglishAndNumbers(tweetData["FullText"]) && tweetData["tweetEmojiCount"] > 0 && tweetData["FullText"].length <= 15) {
+        console.log(tweetData["username"] + " was spam! reason:Emoji Spam");
         return true;
     }
     // 未認証だったらパス
-    if (!isAuthed(dom))
+    if (!tweetData["isblueverified"] || tweetData["verified"])
         return false
     // ツイート内容が4文字未満もしくは日本語名じゃないユーザーかつ日本語率が5割以上ならスパム
-    if (tweettext.length < 4 || (!containsJapanese(username) && calculateJapanesePercentage(tweettext) >= 0.5)) {
-        console.log(username + " was spam! reason:Text Copy Spam");
+    if (tweetData["FullText"].length < 4 || (!containsJapanese(tweetData["username"]) && calculateJapanesePercentage(tweetData["FullText"]) >= 0.5)) {
+        console.log(tweetData["username"] + " was spam! reason:Text Copy Spam");
         return true;
     }
     //連投してたらスパム
-    else if (doubletexters.includes(userid)) {
-        console.log(username + " was spam! reason:Double Tweet Spam");
+    else if (tweetData["DoubleTexters"].includes(tweetData["userid"])) {
+        console.log(tweetData["username"] + " was spam! reason:Double Tweet Spam");
+        return true;
+    }
+    //対象のユーザーがシャドウBANされてるっぽかったらスパム
+    else if (tweetData["userpossibly_sensitive"])
+    {
+        console.log(tweetData["username"] + " was spam! reason:Shadow banned...?");
         return true;
     }
     return false;
@@ -137,10 +157,6 @@ function isButPageInText(dom, tweetText)
     return false;
 }
 const AuthedIconClassName = "r-4qtqp9 r-yyyyoo r-1xvli5t r-bnwqim r-1plcrui r-lrvibr r-1cvl2hr r-f9ja8p r-og9te1 r-9cviqr";
-function isAuthed(dom)
-{
-    return dom.getElementsByClassName(AuthedIconClassName).length > 0;
-}
 function containsEnglishAndNumbers(text) {
     // 英語と数字のみを判定する正規表現
     var englishNumbersRegex = /^[a-zA-Z0-9]+$/;
@@ -319,25 +335,18 @@ function UpdateNotificationObjects() {
         const styletemp = reply.getAttribute("style");
         if (styletemp.indexOf("display:none;") !== -1)
             continue;
-        const mentions = reply.getElementsByClassName("css-1qaijid r-bcqeeo r-qvutc0 r-poiln3 r-1loqt21");
-        let mentionlist = [];
-        for (let i2 = 0; i2 < mentions.length; i2++) {
-            const mentionhref = mentions[i2].getAttribute("href");
-            if (mentionhref == null || !TwitterProfileRelativeURL.test(mentionhref) || mentionlist.includes(mentionhref))
-            {
-                continue;
-            }
-            mentionlist.push(mentionhref.replace("/", ""));
-        }
+        const atsdata = reply.getElementsByTagName("atsdata");
+        if (atsdata.length <= 0)
+            continue;
+        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        if (tweetdetail == null)
+            continue;
         // 8人以上にメンションしていたらスパムとして防御
-        if (mentionlist.length >= 8)
+        if (tweetdetail.entities.user_mentions.length >= 8)
         {
-            const tweetidElement = reply.getElementsByClassName("css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-xoduu5 r-1q142lx r-1w6e6rj r-9aw3ui r-3s2u2q r-1loqt21");
-            if (tweetidElement == null)
-                return;
-            const tweetid = tweetidElement[0].getAttribute("href").split("/").slice(-1)[0];
+            const tweetid = tweetdetail.id_str;
             SetBlockTweet(reply, styletemp, tweetid);
-            const username = reply?.lastChild?.lastChild?.lastChild?.lastChild?.lastChild?.lastChild?.lastChild?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild.firstChild?.firstChild?.firstChild?.firstChild?.firstChild?.innerText;
+            const username = tweetdetail.user.name;
             console.log(username+" was spam! reason:Notification Mention Spam");
         }
     }
@@ -349,14 +358,23 @@ function UpdateReplyObjects()
     if (replys.length <= 2)
         return;
     const meuserid = GetMeUserId();//document.querySelector('a[data-testid="AppTabBar_Profile_Link"]').getAttribute("href").replace("/", "");
-    const authoruserid = replys[0]?.querySelector(".r-1wvb978 span")?.innerText.replace('@', '').trim().toLowerCase();
+    let authoruserid = null;
     let CurrentUserIds = [];
     let DoubleTexters = [];
     for (var i = 2; i < replys.length; i++)
     {
-        const userid = replys[i]?.querySelector(".r-1wvb978 span")?.innerText.replace('@', '').trim().toLowerCase();
+        const atsdata = replys[i].getElementsByTagName("atsdata");
+        if (atsdata.length <= 0)
+            continue;
+        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        if (tweetdetail == null)
+            continue;
+        //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerText)
+        const userid = tweetdetail.user.screen_name;
         if (userid == null)
             continue;
+        if (authoruserid == null)
+            authoruserid = tweetdetail.in_reply_to_screen_name;
         if (DoubleTexters.includes(userid))
             continue;
         if (CurrentUserIds.includes(userid))
@@ -368,20 +386,45 @@ function UpdateReplyObjects()
     }
     for (var i = 2; i < replys.length; i++) {
         const reply = replys[i];
+        const styletemp = reply.getAttribute("style");
+        if (styletemp.indexOf("display:none;") !== -1)
+            continue;
         if (reply.firstChild.firstChild == null) {
-            //console.log("passed")
             continue;
         }
-        const userid = reply?.querySelector(".r-1wvb978 span")?.innerText.replace('@', '').trim().toLowerCase();
-        if (userid == null)
+        const atsdata = reply.getElementsByTagName("atsdata");
+        if (atsdata.length <= 0)
             continue;
+        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        if (tweetdetail == null)
+            continue;
+        let replyisfollowing = tweetdetail.user.following;
+        if (replyisfollowing == undefined)
+            replyisfollowing = false;
+        if (replyisfollowing)
+            continue;
+        const replyfollowingcount = tweetdetail.user.friends_count;
+        const replyfollowercount = tweetdetail.user.followers_count;
+        const replyfulltext = tweetdetail.full_text;
+        const userid = tweetdetail.user.screen_name;
+        let replyfulltextreplaced = replyfulltext.replace("@" + authoruserid,"");
+        const replyurls = tweetdetail.entities.urls;
+        for (let i2 = 0; i2 < replyurls.length; i2++)
+        {
+            replyfulltextreplaced = replyfulltextreplaced.replace(replyurls[i2].url,"");
+        }
+        const isblueverified = tweetdetail.user.is_blue_verified;
+        const verified = tweetdetail.user.verified;
+        const userpossibly_sensitive = tweetdetail.user.possibly_sensitive;
+        const favorite_count = tweetdetail.favorite_count;
+        const requoteExist = tweetdetail.quoted_status != undefined;
         if (GetWhiteList().includes(userid))
             continue;
         let tweetlink = reply.getElementsByClassName("css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-xoduu5 r-1q142lx r-1w6e6rj r-9aw3ui r-3s2u2q r-1loqt21");
         if (tweetlink.length <= 0)
             continue;
-        let tweetid = tweetlink[0].getAttribute("href").split("/").slice(-1)[0];
-        const username = reply?.lastChild?.lastChild?.lastChild?.lastChild?.lastChild?.lastChild?.lastChild?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild.firstChild?.firstChild?.firstChild?.firstChild?.firstChild?.innerText;
+        let tweetid = tweetdetail.id_str;
+        const username = tweetdetail.user.name;
         const tweetTextEl = reply.querySelector('div[data-testid="tweetText"]');
         let tweetText = "";
         let tweetEmojiCount = 0;
@@ -391,11 +434,25 @@ function UpdateReplyObjects()
             tweetText = GetTweetText(tweetTextEl).trim();
             tweetEmojiCount = GetEmojiCount(tweetTextEl);
         }
-        const styletemp = reply.getAttribute("style");
-        if (styletemp.indexOf("display:none;") !== -1)
-            continue;
-
-        if (isSpamTweet(reply, authoruserid, meuserid, username, tweetText, userid, tweetEmojiCount, DoubleTexters))
+        const tweetData =
+        {
+            authoruserid: authoruserid,
+            meuserid: meuserid,
+            username: username,
+            tweetText: tweetText,
+            userid: userid,
+            tweetEmojiCount: tweetEmojiCount,
+            DoubleTexters: DoubleTexters,
+            FollowingCount: replyfollowingcount,
+            FollowerCount: replyfollowercount,
+            FullText: replyfulltextreplaced,
+            verified: verified,
+            isblueverified: isblueverified,
+            userpossibly_sensitive: userpossibly_sensitive,
+            favorite_count: favorite_count,
+            RequoteExist: requoteExist
+        };
+        if (isSpamTweet(reply, tweetData))
         {
             console.log(username+" is @"+userid)
             SetBlockTweet(reply, styletemp, tweetid);
@@ -427,8 +484,9 @@ function isTweetURL(url) {
 
     return isMatch;
 }
+//封・印
 function UpdateProfileButton(profile, isListed)
-{
+{/*
     let WhiteText = "に追加";
     let bc = 0;
     if (isListed)
@@ -436,22 +494,23 @@ function UpdateProfileButton(profile, isListed)
         WhiteText = "から削除";
         bc = 255;
     }
-    const stylehtml = ".image-container {background-color: white; border-radius: 10px; /* 角丸のサイズを設定 */overflow: hidden;   /* 角丸を適用するために必要 */}";
+    //const stylehtml = ".image-container {background-color: white; border-radius: 10px; /* 角丸のサイズを設定 *///overflow: hidden;   /* 角丸を適用するために必要 */} ";
+    /*
     const basestyle = `border-color: rgb(207, 217, 222); background-color: rgba(${bc},${bc},${bc});`;
     const inside = `<div id="ATS_towhitebtn" dir="ltr" class="css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-q4m81j r-a023e6 r-rjixqe r-b88u0q r-1awozwy r-6koalj r-18u37iz r-16y2uox r-1777fci" style="color: rgb(${255 - bc},${255 - bc},${255 - bc}); text-overflow: unset;"><span class="css-1qaijid r-dnmrzs r-1udh08x r-3s2u2q r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe" style="text-overflow: unset;">　ホワイトリスト${WhiteText}  <img src="` + chrome.runtime.getURL("icon.png") + '" width="20px" style="vertical-align:top;">　</span></div>';
-    const html = `<style>${stylehtml}</style><div aria-expanded="false" aria-tabindex="0" class="ATS_towhite css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-6gpygo r-1kb76zh r-2yi16 r-1qi8awa r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l" style="${basestyle}" data-testid="userActions">${inside}</div>`;
+    const html = `<div aria-expanded="false" aria-tabindex="0" class="ATS_towhite css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-6gpygo r-1kb76zh r-2yi16 r-1qi8awa r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l" style="${basestyle}">${inside}</div>`;
     //ATS_towhiteがclass名に入っているかを確認する
     ATS_towhite = profile.getElementsByClassName("ATS_towhite");
     if (ATS_towhite.length <= 0)
     {
-        profile.innerHTML = html + profile.innerHTML;
+        profile.parentElement.innerHTML = html + profile.parentElement.innerHTML;
     } else
     {
         ATS_towhite[0].innerHTML = inside;
         ATS_towhite[0].setAttribute("style", basestyle);
     }
     let button = document.getElementById('ATS_towhitebtn');
-    button.addEventListener('click', function () { OnClickWhitelist(profile); });
+    button.addEventListener('click', function () { OnClickWhitelist(profile); });*/
 }
 function OnClickWhitelist(dom)
 {
