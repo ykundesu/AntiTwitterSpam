@@ -295,12 +295,14 @@ function UpdateReplyObjects()
         const tweetdetail = JSON.parse(atsdata[0].innerText);
         if (tweetdetail == null)
             continue;
+        if (authoruserid == null || authoruserid == undefined)
+            authoruserid = tweetdetail.in_reply_to_screen_name;
+        if (BlockedTweetIds.includes(tweetdetail.id_str))
+            continue;
         //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerText)
         const userid = tweetdetail.user.screen_name;
         if (userid == null)
             continue;
-        if (authoruserid == null)
-            authoruserid = tweetdetail.in_reply_to_screen_name;
         if (DoubleTexters.includes(userid))
             continue;
         if (CurrentUserIds.includes(userid))
@@ -324,6 +326,13 @@ function UpdateReplyObjects()
         const tweetdetail = JSON.parse(atsdata[0].innerText);
         if (tweetdetail == null)
             continue;
+        let tweetid = tweetdetail.id_str;
+        if (BlockedTweetIds.includes(tweetid))
+        {
+            SetBlockTweet(reply, styletemp, tweetid);
+            continue;
+        }
+
         let replyisfollowing = tweetdetail.user.following;
         if (replyisfollowing == undefined)
             replyisfollowing = false;
@@ -333,10 +342,12 @@ function UpdateReplyObjects()
             if (isButPageInText(reply, tweetdetail.full_text)) {
                 console.log(tweetdetail.user.name + " was spam! reason:But page Spam");
                 console.log(tweetdetail.user.name + " is @" + tweetdetail.user.screen_name)
-                SetBlockTweet(reply, styletemp, tweetdetail.id_str);
+                SetBlockTweet(reply, styletemp, tweetid);
             }
             continue;
         }
+        if (authoruserid == null || authoruserid == undefined)
+            authoruserid = tweetdetail.in_reply_to_screen_name;
         const replyfollowingcount = tweetdetail.user.friends_count;
         const replyfollowercount = tweetdetail.user.followers_count;
         const replyfulltext = tweetdetail.full_text;
@@ -357,7 +368,6 @@ function UpdateReplyObjects()
         let tweetlink = reply.getElementsByClassName("css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-xoduu5 r-1q142lx r-1w6e6rj r-9aw3ui r-3s2u2q r-1loqt21");
         if (tweetlink.length <= 0)
             continue;
-        let tweetid = tweetdetail.id_str;
         const username = tweetdetail.user.name;
         const tweetTextEl = reply.querySelector('div[data-testid="tweetText"]');
         let tweetText = "";
