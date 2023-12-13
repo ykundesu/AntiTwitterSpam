@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anti TwitterSpam",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "action": {
     "default_title": "Anti TwitterSpam!",
     "default_popup": "popup.html",
@@ -14,7 +14,7 @@
       "js": [ "content.js" ],
       "matches": [
         "*://twitter.com/*",
-        "*://*.twitter.com/*"
+        "*://mobile.twitter.com/*"
       ],
       "run_at": "document_end"
     }
@@ -33,7 +33,11 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "AntiTwitterSpam@yoking.dev",
-      "strict_min_version": "42.0"
+      "strict_min_version": "109.0"
+    },
+    "gecko_android": {
+      "id": "AntiTwitterSpam@yoking.dev",
+      "strict_min_version": "121.0a"
     }
   },
   "permissions": [
