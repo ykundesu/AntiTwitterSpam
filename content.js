@@ -75,13 +75,7 @@ function isSpamTweet(dom, tweetData)/*authoruserid, meuserid, username, tweettex
     {
         console.log(tweetData["username"] + " was spam! reason:But page Spam");
         return true;
-    }/*
-    console.log(tweetData["userid"] + "1: " + tweetData["FullText"])
-    console.log(tweetData["userid"] + "2: " + tweetData["FullText"].length)
-    console.log(tweetData["userid"] + "3: " + tweetData["RequoteExist"])
-    console.log(tweetData["userid"] + "4:" + tweetData["username"])
-    console.log(tweetData["userid"] + "5:" + containsJapanese(tweetData["username"]))
-    console.log(tweetData["userid"] + "6:" + tweetData["userpossibly_sensitive"])*/
+    }
     // 内容がほぼ引RTのみだったらスパム
     if (tweetData["FullText"].length <= 3 && tweetData["RequoteExist"] &&
         (!containsJapanese(tweetData["username"]) || tweetData["userpossibly_sensitive"]))
@@ -92,6 +86,14 @@ function isSpamTweet(dom, tweetData)/*authoruserid, meuserid, username, tweettex
     // フォロワー-フォロー中が5万人以上いたらパス
     if ((tweetData["FollowerCount"] - tweetData["FollowingCount"]) >= 50000)
         return false;
+    let UsernameHiraganaCount = GetHiraganaKatakanaCount(tweetData["username"]) + GetEnglishAndNumbersCount(tweetData["username"]);
+    //プロフ見て系であればスパム
+    if (!tweetData["isblueverified"] && !tweetData["verified"] &&
+        tweetData["isDefaultIcon"] && !containsKanji(tweetData["username"]) && UsernameHiraganaCount >= 2 && UsernameHiraganaCount <= 8 &&
+        tweetData["FullText"].includes("初めまして") &&
+        (tweetData["FullText"].includes("プロフ見て") || tweetData["FullText"].includes("プロフリンク見て")) && 
+        tweetData["tweetEmojiCount"] >= 2 && tweetData["tweetEmojiCount"] <= 6)
+        return true;
     // 名前に日本語が入っているかつひらがな・カタカナが含まれていたらパス
     if (containsHiraganaKatakanaOnly(tweetData["username"]))
         return false;
@@ -142,7 +144,7 @@ function isButPageInText(dom, tweetText)
 const AuthedIconClassName = "r-4qtqp9 r-yyyyoo r-1xvli5t r-bnwqim r-1plcrui r-lrvibr r-1cvl2hr r-f9ja8p r-og9te1 r-9cviqr";
 function containsEnglishAndNumbers(text) {
     // 英語と数字のみを判定する正規表現
-    var englishNumbersRegex = /^[a-zA-Z0-9]+$/;
+    var englishNumbersRegex = /[a-zA-Z0-9]/;
 
     return englishNumbersRegex.test(text);
 }
@@ -164,6 +166,49 @@ function calculateJapanesePercentage(text) {
         return japaneseChars / totalChars;
     }
 }
+function GetHiraganaKatakanaCount(text) {
+    if (!containsHiraganaKatakanaOnly(text))
+        return 0;
+    const totalChars = text.length;
+    const japaneseChars = Array.from(text).reduce((count, char) => {
+        // 日本語の範囲のUnicodeを指定
+        if (containsHiraganaKatakanaOnly(char)) {
+            count++;
+        }
+        return count;
+    }, 0);
+
+    if (totalChars === 0) {
+        return 0;
+    } else {
+        return japaneseChars;
+    }
+}
+function GetEnglishAndNumbersCount(text) {
+    if (!containsEnglishAndNumbers(text))
+        return 0;
+    const totalChars = text.length;
+    const japaneseChars = Array.from(text).reduce((count, char) => {
+        // 日本語の範囲のUnicodeを指定
+        if (containsEnglishAndNumbers(char)) {
+            count++;
+        }
+        return count;
+    }, 0);
+
+    if (totalChars === 0) {
+        return 0;
+    } else {
+        return japaneseChars;
+    }
+}
+function containsHiraganaOnly(text)
+{
+    // ひらがな・カタカナのみを含む正規表現
+    var hiraganaRegex = /[\u3040-\u309F]/;
+
+    return hiraganaRegex.test(text);
+}
 function containsHiraganaKatakanaOnly(text)
 {
     // ひらがな・カタカナのみを含む正規表現
@@ -174,6 +219,12 @@ function containsHiraganaKatakanaOnly(text)
 function containsJapanese(text) {
     // ひらがな、カタカナ、漢字のいずれかが含まれているかを判定する正規表現
     var japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
+
+    return japaneseRegex.test(text);
+}
+function containsKanji(text) {
+    // カタカナ、漢字のいずれかが含まれているかを判定する正規表現
+    var japaneseRegex = /[\u4E00-\u9FAF]/;
 
     return japaneseRegex.test(text);
 }
@@ -285,6 +336,13 @@ function UpdateReplyObjects()
         return;
     const meuserid = GetMeUserId();//document.querySelector('a[data-testid="AppTabBar_Profile_Link"]').getAttribute("href").replace("/", "");
     let authoruserid = null;
+    const authoratsdata = replys[0].getElementsByTagName("atsdata");
+    if (authoratsdata.length <= 0)
+        return;
+    const authortweetdetail = JSON.parse(authoratsdata[0].innerText);
+    if (authortweetdetail == null)
+        return;
+    authoruserid = authortweetdetail.user.screen_name;
     let CurrentUserIds = [];
     let DoubleTexters = [];
     for (var i = 2; i < replys.length; i++)
@@ -295,8 +353,6 @@ function UpdateReplyObjects()
         const tweetdetail = JSON.parse(atsdata[0].innerText);
         if (tweetdetail == null)
             continue;
-        if (authoruserid == null || authoruserid == undefined)
-            authoruserid = tweetdetail.in_reply_to_screen_name;
         if (BlockedTweetIds.includes(tweetdetail.id_str))
             continue;
         //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerText)
@@ -363,6 +419,7 @@ function UpdateReplyObjects()
         const userpossibly_sensitive = tweetdetail.user.possibly_sensitive;
         const favorite_count = tweetdetail.favorite_count;
         const requoteExist = tweetdetail.quoted_status != undefined;
+        const isDefaultIcon = tweetdetail.user.default_profile_image;
         if (GetWhiteList().includes(userid))
             continue;
         let tweetlink = reply.getElementsByClassName("css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-xoduu5 r-1q142lx r-1w6e6rj r-9aw3ui r-3s2u2q r-1loqt21");
@@ -394,7 +451,8 @@ function UpdateReplyObjects()
             isblueverified: isblueverified,
             userpossibly_sensitive: userpossibly_sensitive,
             favorite_count: favorite_count,
-            RequoteExist: requoteExist
+            RequoteExist: requoteExist,
+            isDefaultIcon: isDefaultIcon
         };
         if (isSpamTweet(reply, tweetData))
         {
