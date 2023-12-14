@@ -127,6 +127,29 @@ function isSpamTweet(dom, tweetData)/*authoruserid, meuserid, username, tweettex
     }
     return false;
 }
+function isCanMuteTweet(dom, tweetData)
+{
+    if (!isSpamTweet(dom, tweetData))
+        return false;
+    if (isButPageInText(dom, tweetData["tweetText"]))
+        return false;
+    if (containsJapanese(tweetData["username"]))
+        return false;
+    return true;
+}
+function UpdateTask()
+{
+    if (MuteTasks.length <= 0)
+        return;
+    while (MuteTasks[0].querySelector('div[data-testid="caret"]') == null)
+    {
+        MuteTasks.shift();
+    }
+    if (document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]') != null)
+        return;
+    ClickMute(MuteTasks[0]);
+    MuteTasks.shift();
+}
 function isButPageInText(dom, tweetText)
 {
     for (let i = 0; i < ButPages.length; i++)
@@ -329,6 +352,32 @@ function UpdateNotificationObjects() {
     }
 
 }
+let MuteTasks = [];
+function ClickMute(tweetdom)
+{
+    const menuButton = tweetdom.querySelector('div[data-testid="caret"]');
+    menuButton.click();
+    setTimeout(function () {
+        const Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
+        if (Dropdown == null)
+            return;
+        Dropdown.setAttribute("style", "display:none;")
+        const items = Dropdown.querySelectorAll('div[tabindex="0"]');
+        for (let i = 1; i < items.length; i++)
+        {
+            if (!items[i].innerText.startsWith("@"))
+                continue;
+            items[i].click();
+            break;
+        }
+        setTimeout(function () {
+            document.querySelector(
+                'div[data-testid="toast"]'
+            ).setAttribute("style", "display:none;");
+        }, 4);
+    }, 5);
+
+}
 function UpdateReplyObjects()
 {
     const replys = document.querySelectorAll("div[data-testid='cellInnerDiv']");
@@ -340,6 +389,8 @@ function UpdateReplyObjects()
     let DoubleTexters = [];
     for (var i = 2; i < replys.length; i++)
     {
+        if (replys[i] == null)
+            continue;
         const atsdata = replys[i].getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
@@ -363,10 +414,12 @@ function UpdateReplyObjects()
     }
     for (var i = 2; i < replys.length; i++) {
         const reply = replys[i];
+        if (reply == null)
+            continue;
         const styletemp = reply.getAttribute("style");
         if (styletemp.indexOf("display:none;") !== -1)
             continue;
-        if (reply.firstChild.firstChild == null) {
+        if (reply?.firstChild?.firstChild == null) {
             continue;
         }
         const atsdata = reply.getElementsByTagName("atsdata");
@@ -440,6 +493,11 @@ function UpdateReplyObjects()
         {
             console.log(username+" is @"+userid)
             SetBlockTweet(reply, styletemp, tweetid);
+            if (isCanMuteTweet(reply, tweetData))
+            {
+                if (!MuteTasks.includes(reply))
+                    MuteTasks.push(reply);
+            }
             //console.log(username + ":" + tweetText)
         }
     }
@@ -540,7 +598,8 @@ function CheckAndUpdateUrl()
                 UpdateReplyObjects();
                 currentInterval = setInterval(() => {
                     UpdateReplyObjects();
-                }, 750);
+                    UpdateTask();
+                }, 1500);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
                     observer.observe(document.getElementsByTagName("section")[0].lastChild.lastChild, {

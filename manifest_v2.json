@@ -24,8 +24,8 @@
     }
   ],
   "web_accessible_resources": [
-        "icon.png",
-        "twitter_script.js"
+    "icon.png",
+    "twitter_script.js"
   ],
   "browser_specific_settings": {
     "gecko": {
