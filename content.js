@@ -109,6 +109,9 @@ function isSpamTweet(dom, tweetData)/*authoruserid, meuserid, username, tweettex
     // 未認証だったらパス
     if (!tweetData["isblueverified"] || tweetData["verified"])
         return false
+    // フォロワーが500人未満だったらパス
+    if (tweetData["FollowerCount"] < 500)
+        return false;
     // ツイート内容が4文字未満もしくは日本語名じゃないユーザーかつ日本語率が5割以上ならスパム
     if (tweetData["FullText"].length < 4 || (!containsJapanese(tweetData["username"]) && calculateJapanesePercentage(tweetData["FullText"]) >= 0.5)) {
         console.log(tweetData["username"] + " was spam! reason:Text Copy Spam");
