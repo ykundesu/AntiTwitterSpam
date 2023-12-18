@@ -137,17 +137,18 @@ function isCanMuteTweet(dom, tweetData)
         return false;
     return true;
 }
+let MuteTaskIdMax = 0;
 function UpdateTask()
 {
     if (MuteTasks.length <= 0)
         return;
-    while (MuteTasks[0].querySelector('div[data-testid="caret"]') == null)
+    while (MuteTasks[0] == undefined || MuteTasks[0].querySelector('div[data-testid="caret"]') == null)
     {
         MuteTasks.shift();
     }
-    if (document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]') != null)
+    if (document.querySelector('.css-175oi2r div[data-testid="Dropdown"]') != null)
         return;
-    ClickMute(MuteTasks[0]);
+    ClickButton(MuteTasks[0], false, MuteTaskIdMax++);
     MuteTasks.shift();
 }
 function isButPageInText(dom, tweetText)
@@ -337,7 +338,7 @@ function UpdateNotificationObjects() {
         const atsdata = reply.getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
-        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        const tweetdetail = JSON.parse(atsdata[0].innerHTML.replace(/<!--(.*?)-->/g, '$1'));
         if (tweetdetail == null)
             continue;
         // 8人以上にメンションしていたらスパムとして防御
@@ -353,29 +354,48 @@ function UpdateNotificationObjects() {
 
 }
 let MuteTasks = [];
-function ClickMute(tweetdom)
+let DropdownIntervals = {};
+let HideMsgIntervals = {};
+function ClickButton(tweetdom, isBlock, id)
 {
     const menuButton = tweetdom.querySelector('div[data-testid="caret"]');
     menuButton.click();
-    setTimeout(function () {
+    let waitedcount = 0;
+    DropdownIntervals[id] = setInterval(function () {
+        console.log("runned!:" + id);
         const Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
         if (Dropdown == null)
+        {
+            waitedcount++;
+            if (waitedcount >= 4)
+                clearInterval(DropdownIntervals[id]);
             return;
+        }
+        clearInterval(DropdownIntervals[id]);
+        console.log("cleared!:" + id);
         Dropdown.setAttribute("style", "display:none;")
         const items = Dropdown.querySelectorAll('div[tabindex="0"]');
+        let clicked = false;
         for (let i = 1; i < items.length; i++)
         {
             if (!items[i].innerText.startsWith("@"))
                 continue;
+            if (!items[i].innerText.includes(isBlock ? "さんをブロック" :"さんをミュート"))
+                continue;
             items[i].click();
+            clicked = true;
             break;
         }
-        setTimeout(function () {
-            document.querySelector(
-                'div[data-testid="toast"]'
-            ).setAttribute("style", "display:none;");
-        }, 4);
-    }, 5);
+        if (clicked) {
+            HideMsgIntervals[id] = setInterval(function () {
+                const clickedtext = document.getElementsByClassName("css-175oi2r r-1awozwy r-l5o3uw r-18u37iz r-1wtj0ep r-xyw6el r-105ug2t r-yz1j6i r-1kihuf0 r-z2wwpe r-zd98yo");
+                if (clickedtext.length <= 0)
+                    return;
+                clickedtext[0].setAttribute("style", "display:none;");
+                clearInterval(HideMsgIntervals[id]);
+            }, 150);
+        }
+    }, 50);
 
 }
 function UpdateReplyObjects()
@@ -394,12 +414,15 @@ function UpdateReplyObjects()
         const atsdata = replys[i].getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
-        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        const tweetdetail = JSON.parse(atsdata[0].innerHTML.replace(/<!--(.*?)-->/g, '$1'));
         if (tweetdetail == null)
+            continue;
+        //プロモーションならパス
+        if (tweetdetail.promoted_content != undefined)
             continue;
         if (authoruserid == null || authoruserid == undefined)
             authoruserid = tweetdetail.in_reply_to_screen_name;
-        //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerText)
+        //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerHTML)
         const userid = tweetdetail.user.screen_name;
         if (userid == null)
             continue;
@@ -425,7 +448,7 @@ function UpdateReplyObjects()
         const atsdata = reply.getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
-        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        const tweetdetail = JSON.parse(atsdata[0].innerHTML.replace(/<!--(.*?)-->/g, '$1'));
         if (tweetdetail == null)
             continue;
         let replyisfollowing = tweetdetail.user.following;
@@ -599,7 +622,7 @@ function CheckAndUpdateUrl()
                 currentInterval = setInterval(() => {
                     UpdateReplyObjects();
                     UpdateTask();
-                }, 1500);
+                }, 500);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
                     observer.observe(document.getElementsByTagName("section")[0].lastChild.lastChild, {

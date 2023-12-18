@@ -28,6 +28,7 @@ function UpdateData()
         else
             atsdata = atsdata[0];
         atsdata.innerText = JSON.stringify(tweetData);
+        atsdata.innerHTML = "<!--" + atsdata.innerText + "-->";
     }
 }
 setInterval(function ()
