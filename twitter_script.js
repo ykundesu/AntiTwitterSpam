@@ -34,7 +34,7 @@ function UpdateData()
 setInterval(function ()
 {
     UpdateData();
-}, 50);
+}, 500);
 
 var observer = new MutationObserver(UpdateData);
 UpdateData();

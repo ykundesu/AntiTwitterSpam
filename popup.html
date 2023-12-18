@@ -25,6 +25,9 @@
     </style>
     <center>
         <font size="6">設定</font><br>
+        <font size="2">
+            以下は試験的な機能です。<br>(動くことは確認済み)<br>また、スマホでは動きません。
+        </font><br>
         <label>
             <font size="3"><nobr>　スパムへの非表示以外の対処　</nobr><br></font>
             <select id="SpamCope">
@@ -34,10 +37,13 @@
             </select>
         </label>
         <br><br>
-        <label><font size="3">
-            スパムをツイートから<br>
-            非表示にする(ツイ主の場合)</font><br>
-        <input type="checkbox" id="IsTweetHideAuthorOnly">
+        <label>
+            <font size="3">
+                スパムをツイートから<br>
+                非表示にする(ツイ主の場合)
+            </font><br><nobr>(上の設定でブロックを<br>選んでいる場合はブロックが行われます。<br>ミュートの場合は行われません。)</nobr>
+            <br>
+            <input type="checkbox" id="IsTweetHideAuthorOnly">
         </label>
     </center><br>
     <center>

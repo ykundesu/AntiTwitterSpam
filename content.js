@@ -1,7 +1,9 @@
 // 誰かこれやってください！！！
-// ・自動ミュート・ブロックの実装(内部APIを叩けずに保留)
 // ・自動報告の実装(内部APIを叩けずに保留)
 // だれかプルリク出して！！！頼む！！！出来なかったんや！！！
+
+let CopeType = "None";
+let IsAutoTweetHideAuthorOnly = false;
 
 let twitterscript = document.createElement('script')
 twitterscript.src = chrome.runtime.getURL('twitter_script.js')
@@ -129,6 +131,8 @@ function isSpamTweet(dom, tweetData)/*authoruserid, meuserid, username, tweettex
 }
 function isCanMuteTweet(dom, tweetData)
 {
+    if (CopeType == "None" && !IsAutoTweetHideAuthorOnly)
+        return false;
     if (!isSpamTweet(dom, tweetData))
         return false;
     if (isButPageInText(dom, tweetData["tweetText"]))
@@ -148,7 +152,8 @@ function UpdateTask()
     }
     if (document.querySelector('.css-175oi2r div[data-testid="Dropdown"]') != null)
         return;
-    ClickButton(MuteTasks[0], false, MuteTaskIdMax++);
+    console.log("running ClickButton");
+    ClickButton(MuteTasks[0], MuteTaskIdMax++);
     MuteTasks.shift();
 }
 function isButPageInText(dom, tweetText)
@@ -287,6 +292,14 @@ chrome.storage.local.get("BlockedTweetCount", function (BlockedGeted) {
     else
         BlockedTweetCount = 0
 });
+chrome.storage.local.get("SpamCope", function (SpamCope) {
+    if (SpamCope.SpamCope)
+        CopeType = SpamCope.SpamCope;
+});
+chrome.storage.local.get("IsTweetHideAuthorOnly", function (IsTweetHideAuthorOnly) {
+    if (IsTweetHideAuthorOnly.IsTweetHideAuthorOnly)
+        IsAutoTweetHideAuthorOnly = IsTweetHideAuthorOnly.IsTweetHideAuthorOnly;
+});
 function SetBlockTweet(reply, styletemp, tweetid)
 {
     reply.setAttribute("style", styletemp + "; display:none;");
@@ -356,46 +369,85 @@ function UpdateNotificationObjects() {
 let MuteTasks = [];
 let DropdownIntervals = {};
 let HideMsgIntervals = {};
-function ClickButton(tweetdom, isBlock, id)
+let ClickBlockOrNoneIntervals = {};
+function ClickButton(tweetdom, id)
 {
     const menuButton = tweetdom.querySelector('div[data-testid="caret"]');
+    const layers = document.getElementById("layers");
+    layers.setAttribute("style", layers.getAttribute("style")+"display:none;")
     menuButton.click();
     let waitedcount = 0;
-    DropdownIntervals[id] = setInterval(function () {
-        console.log("runned!:" + id);
+    setTimeout(function () {
         const Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
         if (Dropdown == null)
         {
             waitedcount++;
             if (waitedcount >= 4)
-                clearInterval(DropdownIntervals[id]);
+            {
+                //clearInterval(DropdownIntervals[id]);
+            }
+            layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
             return;
         }
-        clearInterval(DropdownIntervals[id]);
-        console.log("cleared!:" + id);
+        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;",""))
+        //clearInterval(DropdownIntervals[id]);
         Dropdown.setAttribute("style", "display:none;")
         const items = Dropdown.querySelectorAll('div[tabindex="0"]');
         let clicked = false;
+        let targettext = "";
+        let buttons = {};
         for (let i = 1; i < items.length; i++)
         {
-            if (!items[i].innerText.startsWith("@"))
-                continue;
-            if (!items[i].innerText.includes(isBlock ? "さんをブロック" :"さんをミュート"))
+            buttons[items[i].innerText] = items[i];
+        }
+        if (CopeType == "Mute")
+            targettext = "さんをミュート";
+        else if (CopeType == "Block")
+            targettext = "さんをブロック";
+        const ButtonKeys = Object.keys(buttons);
+        if (IsAutoTweetHideAuthorOnly &&
+            ButtonKeys.includes("返信を非表示にする"))
+            targettext = "返信を非表示にする";
+        if (targettext == "")
+            return;
+        for (i = 1; i < items.length;i++)
+        {
+            if (!items[i].innerText.includes(targettext))
                 continue;
             items[i].click();
             clicked = true;
             break;
         }
-        if (clicked) {
-            HideMsgIntervals[id] = setInterval(function () {
-                const clickedtext = document.getElementsByClassName("css-175oi2r r-1awozwy r-l5o3uw r-18u37iz r-1wtj0ep r-xyw6el r-105ug2t r-yz1j6i r-1kihuf0 r-z2wwpe r-zd98yo");
-                if (clickedtext.length <= 0)
+        if (targettext == "返信を非表示にする" || targettext == "さんをブロック")
+        {
+            let waitedcountbon = 0;
+            layers.setAttribute("style", layers.getAttribute("style") + "display:none;")
+            ClickBlockOrNoneIntervals[id] = setInterval(function ()
+            {
+                let btntext = "confirmationSheetCancel";
+                if (CopeType == "Block")
+                    btntext = "confirmationSheetConfirm";
+                let yesornobtn = document.querySelector('div[data-testid="'+btntext+'"]');
+                if (yesornobtn == undefined || yesornobtn == null)
+                {
+                    waitedcountbon++;
+                    if (waitedcountbon > 10)
+                    {
+                        clearTimeout(ClickBlockOrNoneIntervals[id]);
+                        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+                    }
                     return;
-                clickedtext[0].setAttribute("style", "display:none;");
-                clearInterval(HideMsgIntervals[id]);
-            }, 150);
+                }
+                document.getElementsByClassName("css-175oi2r r-1pz39u2 r-16y2uox r-1wbh5a2")[0].setAttribute("style", "display:none;");
+                yesornobtn.click();
+                clearInterval(ClickBlockOrNoneIntervals[id]);
+                layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""));
+            }, 1);
         }
-    }, 50);
+        const overlays = document.getElementsByClassName("css-175oi2r r-zchlnj r-u8s1d r-1d2f490 r-ipm5af r-1p0dtai r-105ug2t");
+        if (overlays.length > 0)
+            overlays[0].remove();
+    }, 450);
 
 }
 function UpdateReplyObjects()
@@ -603,6 +655,16 @@ console.log(reactProps)*/
 /** @type {string} */
 var lastlocation = location.href;
 let currentInterval = null;
+let layers = document.getElementById("layers");
+setInterval(() => {
+    if (layers == null)
+        layers = document.getElementById("layers");
+    if (layers != null)
+        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+}, 1500);
+setInterval(() => {
+    UpdateTask();
+}, 1500);
 function CheckAndUpdateUrl()
 {
     if (lastlocation != location.href) {
@@ -621,7 +683,6 @@ function CheckAndUpdateUrl()
                 UpdateReplyObjects();
                 currentInterval = setInterval(() => {
                     UpdateReplyObjects();
-                    UpdateTask();
                 }, 500);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
@@ -718,6 +779,19 @@ chrome.storage.onChanged.addListener(function (changes, area) {
         else
             BlockedTweetCount = 0
     }
-
+    if ("BlockedTweetCount" in changes) {
+        if (changes.BlockedTweetCount)
+            BlockedTweetCount = changes.BlockedTweetCount.newValue;
+        else
+            BlockedTweetCount = 0
+    }
+    if ("SpamCope" in changes) {
+        if (changes.SpamCope)
+            CopeType = changes.SpamCope.newValue;
+    }
+    if ("IsTweetHideAuthorOnly" in changes) {
+        if (changes.IsTweetHideAuthorOnly)
+            IsAutoTweetHideAuthorOnly = changes.IsTweetHideAuthorOnly.newValue;
+    }
 });
 console.log("Loaded AntiTwitterSpam")

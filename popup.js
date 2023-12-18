@@ -17,6 +17,7 @@ window.addEventListener('DOMContentLoaded', function () {
     }, 500);
 
 
+    const IsTweetHideAuthorOnly = document.getElementById("IsTweetHideAuthorOnly");
 
     const SpamCope = document.getElementById("SpamCope");
     chrome.storage.local.get("SpamCope", function (nowSpamCope)
@@ -26,13 +27,21 @@ window.addEventListener('DOMContentLoaded', function () {
         else
             nowSpamCope = nowSpamCope.SpamCope;
         SpamCope.value = nowSpamCope;
+        if (SpamCope.value != "None")
+            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "");
     });
     SpamCope.onchange = function () {
         chrome.storage.local.set({ SpamCope: this.value });
+        /*
+        if (this.value != "None")
+            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "");
+        else
+        {
+            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "display:none;");
+        }*/
     };
 
 
-    const IsTweetHideAuthorOnly = document.getElementById("IsTweetHideAuthorOnly");
     chrome.storage.local.get("IsTweetHideAuthorOnly", function (nowIsTweetHideAuthorOnly) {
         if (nowIsTweetHideAuthorOnly.IsTweetHideAuthorOnly == null)
             nowIsTweetHideAuthorOnly = false;
