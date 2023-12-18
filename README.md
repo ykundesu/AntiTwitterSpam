@@ -1,7 +1,10 @@
 # Anti TwitterSpam
 ## ストアリンク
-### Chrome:審査待ち
-### Firefox:審査待ち
+画像をクリックすると各ストアへ飛びます。<br>
+MozillaAddonsとChromeストア以外には出していないので、それ以外で入れた場合は自己責任でお願いします。<br>
+[![68747470733a2f2f71696974612d696d6167652d73746f72652e73332e61702d6e6f727468656173742d312e616d617a6f6e6177732e636f6d2f302f3334363435362f32636366303233392d363562342d663930622d623636632d6661626335633130636632392e706](https://github.com/ykundesu/AntiTwitterSpam/assets/49261069/7cfba752-e425-4c67-a13a-ffc7d371910e)](https://addons.mozilla.org/ja/firefox/addon/anti-twitterspam/)
+[![68747470733a2f2f71696974612d696d6167652d73746f72652e73332e61702d6e6f727468656173742d312e616d617a6f6e6177732e636f6d2f302f3334363435362f35653837653136392d663462632d303732342d383730612d6533313033353935613665612e706](https://github.com/ykundesu/AntiTwitterSpam/assets/49261069/d112d8c7-e844-4110-9c06-3400a1b9be1d)](https://chromewebstore.google.com/detail/anti-twitterspam/kidepcmgoakfaefpgjkmkkkmcidneffo?hl=ja)
+
 ## Twitterからスパムを非表示に！
 Twitterからスパムを非表示にする<s>ツイ廃のお前らにぴったりな</s>拡張機能です。
 
