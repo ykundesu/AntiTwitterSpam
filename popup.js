@@ -14,7 +14,47 @@ window.addEventListener('DOMContentLoaded', function () {
     setInterval(() => {
         if (isblocktaskended)
             UpdateBlocked();
-    }, 500);/*
+    }, 500);
+
+
+    const IsTweetHideAuthorOnly = document.getElementById("IsTweetHideAuthorOnly");
+
+    const SpamCope = document.getElementById("SpamCope");
+    chrome.storage.local.get("SpamCope", function (nowSpamCope)
+    {
+        if (nowSpamCope.SpamCope == null)
+            nowSpamCope = "None";
+        else
+            nowSpamCope = nowSpamCope.SpamCope;
+        SpamCope.value = nowSpamCope;
+        if (SpamCope.value != "None")
+            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "");
+    });
+    SpamCope.onchange = function () {
+        chrome.storage.local.set({ SpamCope: this.value });
+        /*
+        if (this.value != "None")
+            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "");
+        else
+        {
+            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "display:none;");
+        }*/
+    };
+
+
+    chrome.storage.local.get("IsTweetHideAuthorOnly", function (nowIsTweetHideAuthorOnly) {
+        if (nowIsTweetHideAuthorOnly.IsTweetHideAuthorOnly == null)
+            nowIsTweetHideAuthorOnly = false;
+        else
+            nowIsTweetHideAuthorOnly = nowIsTweetHideAuthorOnly.IsTweetHideAuthorOnly;
+        IsTweetHideAuthorOnly.checked = nowIsTweetHideAuthorOnly;
+    });
+    IsTweetHideAuthorOnly.onchange = function () {
+        chrome.storage.local.set({ IsTweetHideAuthorOnly: this.checked });
+    };
+
+
+    /*
     document.getElementById('addw').addEventListener('click',
         addwhite);
     document.getElementById('clearbtn').addEventListener('click',

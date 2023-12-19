@@ -28,12 +28,13 @@ function UpdateData()
         else
             atsdata = atsdata[0];
         atsdata.innerText = JSON.stringify(tweetData);
+        atsdata.innerHTML = "<!--" + atsdata.innerText + "-->";
     }
 }
 setInterval(function ()
 {
     UpdateData();
-}, 50);
+}, 500);
 
 var observer = new MutationObserver(UpdateData);
 UpdateData();

@@ -1,7 +1,9 @@
 // 誰かこれやってください！！！
-// ・自動ミュート・ブロックの実装(内部APIを叩けずに保留)
 // ・自動報告の実装(内部APIを叩けずに保留)
 // だれかプルリク出して！！！頼む！！！出来なかったんや！！！
+
+let CopeType = "None";
+let IsAutoTweetHideAuthorOnly = false;
 
 let twitterscript = document.createElement('script')
 twitterscript.src = chrome.runtime.getURL('twitter_script.js')
@@ -129,6 +131,33 @@ function isSpamTweet(dom, tweetData)/*authoruserid, meuserid, username, tweettex
         return true;
     }
     return false;
+}
+function isCanMuteTweet(dom, tweetData)
+{
+    if (CopeType == "None" && !IsAutoTweetHideAuthorOnly)
+        return false;
+    if (!isSpamTweet(dom, tweetData))
+        return false;
+    if (isButPageInText(dom, tweetData["tweetText"]))
+        return false;
+    if (containsJapanese(tweetData["username"]))
+        return false;
+    return true;
+}
+let MuteTaskIdMax = 0;
+function UpdateTask()
+{
+    if (MuteTasks.length <= 0)
+        return;
+    while (MuteTasks[0] == undefined || MuteTasks[0].querySelector('div[data-testid="caret"]') == null)
+    {
+        MuteTasks.shift();
+    }
+    if (document.querySelector('.css-175oi2r div[data-testid="Dropdown"]') != null)
+        return;
+    console.log("running ClickButton");
+    ClickButton(MuteTasks[0], MuteTaskIdMax++);
+    MuteTasks.shift();
 }
 function isButPageInText(dom, tweetText)
 {
@@ -266,6 +295,14 @@ chrome.storage.local.get("BlockedTweetCount", function (BlockedGeted) {
     else
         BlockedTweetCount = 0
 });
+chrome.storage.local.get("SpamCope", function (SpamCope) {
+    if (SpamCope.SpamCope)
+        CopeType = SpamCope.SpamCope;
+});
+chrome.storage.local.get("IsTweetHideAuthorOnly", function (IsTweetHideAuthorOnly) {
+    if (IsTweetHideAuthorOnly.IsTweetHideAuthorOnly)
+        IsAutoTweetHideAuthorOnly = IsTweetHideAuthorOnly.IsTweetHideAuthorOnly;
+});
 function SetBlockTweet(reply, styletemp, tweetid)
 {
     reply.setAttribute("style", styletemp + "; display:none;");
@@ -317,7 +354,7 @@ function UpdateNotificationObjects() {
         const atsdata = reply.getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
-        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        const tweetdetail = JSON.parse(atsdata[0].innerHTML.replace(/<!--(.*?)-->/g, '$1'));
         if (tweetdetail == null)
             continue;
         // 8人以上にメンションしていたらスパムとして防御
@@ -332,6 +369,90 @@ function UpdateNotificationObjects() {
     }
 
 }
+let MuteTasks = [];
+let DropdownIntervals = {};
+let HideMsgIntervals = {};
+let ClickBlockOrNoneIntervals = {};
+function ClickButton(tweetdom, id)
+{
+    const menuButton = tweetdom.querySelector('div[data-testid="caret"]');
+    const layers = document.getElementById("layers");
+    layers.setAttribute("style", layers.getAttribute("style")+"display:none;")
+    menuButton.click();
+    let waitedcount = 0;
+    setTimeout(function () {
+        const Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
+        if (Dropdown == null)
+        {
+            waitedcount++;
+            if (waitedcount >= 4)
+            {
+                //clearInterval(DropdownIntervals[id]);
+            }
+            layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+            return;
+        }
+        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;",""))
+        //clearInterval(DropdownIntervals[id]);
+        Dropdown.setAttribute("style", "display:none;")
+        const items = Dropdown.querySelectorAll('div[tabindex="0"]');
+        let clicked = false;
+        let targettext = "";
+        let buttons = {};
+        for (let i = 1; i < items.length; i++)
+        {
+            buttons[items[i].innerText] = items[i];
+        }
+        if (CopeType == "Mute")
+            targettext = "さんをミュート";
+        else if (CopeType == "Block")
+            targettext = "さんをブロック";
+        const ButtonKeys = Object.keys(buttons);
+        if (IsAutoTweetHideAuthorOnly &&
+            ButtonKeys.includes("返信を非表示にする"))
+            targettext = "返信を非表示にする";
+        if (targettext == "")
+            return;
+        for (i = 1; i < items.length;i++)
+        {
+            if (!items[i].innerText.includes(targettext))
+                continue;
+            items[i].click();
+            clicked = true;
+            break;
+        }
+        if (targettext == "返信を非表示にする" || targettext == "さんをブロック")
+        {
+            let waitedcountbon = 0;
+            layers.setAttribute("style", layers.getAttribute("style") + "display:none;")
+            ClickBlockOrNoneIntervals[id] = setInterval(function ()
+            {
+                let btntext = "confirmationSheetCancel";
+                if (CopeType == "Block")
+                    btntext = "confirmationSheetConfirm";
+                let yesornobtn = document.querySelector('div[data-testid="'+btntext+'"]');
+                if (yesornobtn == undefined || yesornobtn == null)
+                {
+                    waitedcountbon++;
+                    if (waitedcountbon > 10)
+                    {
+                        clearTimeout(ClickBlockOrNoneIntervals[id]);
+                        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+                    }
+                    return;
+                }
+                document.getElementsByClassName("css-175oi2r r-1pz39u2 r-16y2uox r-1wbh5a2")[0].setAttribute("style", "display:none;");
+                yesornobtn.click();
+                clearInterval(ClickBlockOrNoneIntervals[id]);
+                layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""));
+            }, 1);
+        }
+        const overlays = document.getElementsByClassName("css-175oi2r r-zchlnj r-u8s1d r-1d2f490 r-ipm5af r-1p0dtai r-105ug2t");
+        if (overlays.length > 0)
+            overlays[0].remove();
+    }, 450);
+
+}
 function UpdateReplyObjects()
 {
     const replys = document.querySelectorAll("div[data-testid='cellInnerDiv']");
@@ -343,15 +464,20 @@ function UpdateReplyObjects()
     let DoubleTexters = [];
     for (var i = 2; i < replys.length; i++)
     {
+        if (replys[i] == null)
+            continue;
         const atsdata = replys[i].getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
-        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        const tweetdetail = JSON.parse(atsdata[0].innerHTML.replace(/<!--(.*?)-->/g, '$1'));
         if (tweetdetail == null)
+            continue;
+        //プロモーションならパス
+        if (tweetdetail.promoted_content != undefined)
             continue;
         if (authoruserid == null || authoruserid == undefined)
             authoruserid = tweetdetail.in_reply_to_screen_name;
-        //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerText)
+        //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerHTML)
         const userid = tweetdetail.user.screen_name;
         if (userid == null)
             continue;
@@ -366,16 +492,18 @@ function UpdateReplyObjects()
     }
     for (var i = 2; i < replys.length; i++) {
         const reply = replys[i];
+        if (reply == null)
+            continue;
         const styletemp = reply.getAttribute("style");
         if (styletemp.indexOf("display:none;") !== -1)
             continue;
-        if (reply.firstChild.firstChild == null) {
+        if (reply?.firstChild?.firstChild == null) {
             continue;
         }
         const atsdata = reply.getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
-        const tweetdetail = JSON.parse(atsdata[0].innerText);
+        const tweetdetail = JSON.parse(atsdata[0].innerHTML.replace(/<!--(.*?)-->/g, '$1'));
         if (tweetdetail == null)
             continue;
         let replyisfollowing = tweetdetail.user.following;
@@ -443,6 +571,11 @@ function UpdateReplyObjects()
         {
             console.log(username+" is @"+userid)
             SetBlockTweet(reply, styletemp, tweetid);
+            if (isCanMuteTweet(reply, tweetData))
+            {
+                if (!MuteTasks.includes(reply))
+                    MuteTasks.push(reply);
+            }
             //console.log(username + ":" + tweetText)
         }
     }
@@ -525,6 +658,16 @@ console.log(reactProps)*/
 /** @type {string} */
 var lastlocation = location.href;
 let currentInterval = null;
+let layers = document.getElementById("layers");
+setInterval(() => {
+    if (layers == null)
+        layers = document.getElementById("layers");
+    if (layers != null)
+        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+}, 1500);
+setInterval(() => {
+    UpdateTask();
+}, 1500);
 function CheckAndUpdateUrl()
 {
     if (lastlocation != location.href) {
@@ -543,7 +686,7 @@ function CheckAndUpdateUrl()
                 UpdateReplyObjects();
                 currentInterval = setInterval(() => {
                     UpdateReplyObjects();
-                }, 750);
+                }, 500);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
                     observer.observe(document.getElementsByTagName("section")[0].lastChild.lastChild, {
@@ -639,6 +782,19 @@ chrome.storage.onChanged.addListener(function (changes, area) {
         else
             BlockedTweetCount = 0
     }
-
+    if ("BlockedTweetCount" in changes) {
+        if (changes.BlockedTweetCount)
+            BlockedTweetCount = changes.BlockedTweetCount.newValue;
+        else
+            BlockedTweetCount = 0
+    }
+    if ("SpamCope" in changes) {
+        if (changes.SpamCope)
+            CopeType = changes.SpamCope.newValue;
+    }
+    if ("IsTweetHideAuthorOnly" in changes) {
+        if (changes.IsTweetHideAuthorOnly)
+            IsAutoTweetHideAuthorOnly = changes.IsTweetHideAuthorOnly.newValue;
+    }
 });
 console.log("Loaded AntiTwitterSpam")
