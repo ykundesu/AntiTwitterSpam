@@ -34,7 +34,7 @@
     },
     "gecko_android": {
       "id": "AntiTwitterSpam@yoking.dev",
-      "strict_min_version": "121.0"
+      "strict_min_version": "120.0"
     }
   },
   "permissions": [
