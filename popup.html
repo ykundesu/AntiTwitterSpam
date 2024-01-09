@@ -1,59 +1,88 @@
 <html>
-<style>
-.blockedtext {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    padding: 0;
-    margin: 0;
-    color: black;
-}  
-</style>
+<head>
+    <style>
+        .blockedtext {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            padding: 0;
+            margin: 0;
+            color: black;
+        }
+        a, a:visited {
+            color: #0071d1;
+        }
+
+        body {
+            height: max-content;
+        }
+    </style>
+</head>
 <body style="background-color:lightslategray;">
     <center>　　　<font color="white" size="3" style="vertical-align: top;"><!--<nobr>Anti TwitterSpam</nobr>　--><img src="icon.png" width="30px" style="align-items: center;"></font>　　　</center>
     <br><center style="position: relative;"><img src="Blocked.png" width="150px" style="vertical-align: text-top; display: block; margin-top:auto;"><div class="blockedtext" style="font-size: 16px;"><nobr>ブロック済みの<br>ツイート数</nobr><br><br><br></div><div style="font-size: 30px;" class="blockedtext"><br><div id="blocked"><font size="2">読み込み中</font></div></div></center>
     <!--<p>ホワイトリスト</p><br>
     <input type="text" id="useridinput"><button id="addw">追加</button><br>
     <button id="clearbtn">クリア</button><br>
-    <div id="list"></div>--><br>
+    <div id="list"></div>-->
+    <br>
     <div style="background-color:white">
-    <style>
-        a, a:visited {
-            color: #0071d1;
-         }
-    </style>
-    <center>
-        <font size="6">設定</font><br>
-        <font size="2">
-            以下は試験的な機能です。<br>(動くことは確認済み)<br>また、スマホでは動きません。
-        </font><br>
-        <label>
-            <font size="3"><nobr>　スパムへの非表示以外の対処　</nobr><br></font>
-            <select id="SpamCope">
-                <option value="None">何もしない</option>
-                <option value="Mute">ミュート</option>
-                <option value="Block">ブロック</option>
-            </select>
-        </label>
-        <br><br>
-        <label>
-            <font size="3">
-                スパムをツイートから<br>
-                非表示にする(ツイ主の場合)
-            </font><br><nobr>(上の設定でブロックを<br>選んでいる場合はブロックが行われます。<br>ミュートの場合は行われません。)</nobr>
-            <br>
-            <input type="checkbox" id="IsTweetHideAuthorOnly">
-        </label>
-    </center><br>
-    <center>
-        <a href="https://github.com/ykundesu/AntiTwitterSpam">
-            <font size="4">ソースコード(Github)</font>
-        </a><br>
-        <a href="https://twitter.com/ReYYYYoking">
-            <font size="4">開発者Twitter</font>
-        </a>
-    </center>
+        <center>
+            <font size="6">設定</font><br>
+            <div id="loading">
+                読み込み中です...
+            </div>
+            <div id="Options" style="display:none; width: max-content;">
+                <label>
+                    <font size="3">
+                        「スパム報告してブロック」<br>を有効にする
+                    </font>
+                    <br>
+                    <input type="checkbox" id="IsSpamReportAndBlockEnable">
+                </label><br>
+                <label>
+                    <font size="3">
+                        スパムとして<br>判定されたツイートを<br>自動で処理する
+                    </font>
+                    <br>
+                    <input type="checkbox" id="IsTweetAutoProcessing">
+                </label>
+                <div id="TweetAutoProcessOption" style="display: none;">
+                    <font size="2">
+                        以下は試験的な機能です。<br>(動くことは確認済み)<br>また、スマホでは動きません。
+                    </font><br>
+                    <label>
+                        <font size="3"><nobr>　スパムへの非表示以外の対処　</nobr><br></font>
+                        <select id="SpamCope">
+                            <option value="None">何もしない</option>
+                            <option value="Mute">ミュート</option>
+                            <option value="Block">ブロック</option>
+                        </select>
+                    </label>
+                    <br><br>
+                    <label>
+                        <font size="3">
+                            スパムをツイートから<br>
+                            非表示にする(ツイ主の場合)
+                        </font><br><nobr>
+                        (上の設定でブロックを<br>
+                        選んでいる場合はブロックが行われます。<br>
+                        ミュートの場合は行われません。)</nobr>
+                        <br>
+                        <input type="checkbox" id="IsTweetHideAuthorOnly">
+                    </label>
+                </div>
+            </div>
+        </center><br>
+        <center>
+            <a href="https://github.com/ykundesu/AntiTwitterSpam">
+                <font size="4">ソースコード(Github)</font>
+            </a><br>
+            <a href="https://twitter.com/ReYYYYoking">
+                <font size="4">開発者Twitter</font>
+            </a>
+        </center>
     </div>
     <script src="popup.js">
     </script>

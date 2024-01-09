@@ -4,10 +4,20 @@
 
 let CopeType = "None";
 let IsAutoTweetHideAuthorOnly = false;
+let IsTweetAutoProcessing = true;
+let IsSpamReportAndBlockEnable = true;
 
 let twitterscript = document.createElement('script')
 twitterscript.src = chrome.runtime.getURL('twitter_script.js')
 document.documentElement.appendChild(twitterscript);
+let twitterstyle = document.createElement('style')
+// twitter_style.cssを読み込んでから書き込む
+fetch(chrome.runtime.getURL('twitter_style.css'))
+    .then(response => response.text())
+    .then(data => {
+        twitterstyle.innerHTML = data;
+    });
+document.documentElement.appendChild(twitterstyle);
 
 //悪質なサイトのリスト(偽情報を流すサイトなど)
 //独自調査
@@ -298,10 +308,26 @@ chrome.storage.local.get("BlockedTweetCount", function (BlockedGeted) {
 chrome.storage.local.get("SpamCope", function (SpamCope) {
     if (SpamCope.SpamCope)
         CopeType = SpamCope.SpamCope;
+    console.log("Loaded SpamCope:" + CopeType);
 });
 chrome.storage.local.get("IsTweetHideAuthorOnly", function (IsTweetHideAuthorOnly) {
     if (IsTweetHideAuthorOnly.IsTweetHideAuthorOnly)
         IsAutoTweetHideAuthorOnly = IsTweetHideAuthorOnly.IsTweetHideAuthorOnly;
+    console.log("Loaded IsTweetHideAuthorOnly:" + IsAutoTweetHideAuthorOnly)
+});
+chrome.storage.local.get("IsTweetAutoProcessing", function (isTweetAutoProcessing) {
+    if (isTweetAutoProcessing.IsTweetAutoProcessing == null)
+        IsTweetAutoProcessing = true;
+    else
+        IsTweetAutoProcessing = isTweetAutoProcessing.IsTweetAutoProcessing;
+    console.log("Loaded IsTweetAutoProcessing:" + IsTweetAutoProcessing)
+});
+chrome.storage.local.get("IsSpamReportAndBlockEnable", function (IsSpamReportAndBlockEnable) {
+    if (IsSpamReportAndBlockEnable.IsSpamReportAndBlockEnable == null)
+        IsSpamReportAndBlockEnable = true;
+    else
+        IsSpamReportAndBlockEnable = IsSpamReportAndBlockEnable.IsSpamReportAndBlockEnable;
+    console.log("Loaded IsSpamReportAndBlockEnable:" + IsSpamReportAndBlockEnable)
 });
 function SetBlockTweet(reply, styletemp, tweetid)
 {
@@ -339,6 +365,8 @@ function RemoveWhiteList(userid) {
 }
 const TwitterProfileRelativeURL = /^\/[^\/]+$/;
 function UpdateNotificationObjects() {
+    if (!IsTweetAutoProcessing)
+        return;
     const replys = document.querySelectorAll("div[data-testid='cellInnerDiv']");
     if (replys.length <= 0)
         return;
@@ -364,7 +392,7 @@ function UpdateNotificationObjects() {
             SetBlockTweet(reply, styletemp, tweetid);
             const username = tweetdetail.user.name;
             console.log(username + " was spam! reason:Notification Mention Spam");
-            console.log(username + " is @" + userid)
+            console.log(username + " is @" + tweetdetail.user.screen_name)
         }
     }
 
@@ -381,14 +409,8 @@ function ClickButton(tweetdom, id)
     menuButton.click();
     let waitedcount = 0;
     setTimeout(function () {
-        const Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
-        if (Dropdown == null)
-        {
-            waitedcount++;
-            if (waitedcount >= 4)
-            {
-                //clearInterval(DropdownIntervals[id]);
-            }
+        let Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
+        if (Dropdown == null) {
             layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
             return;
         }
@@ -453,6 +475,132 @@ function ClickButton(tweetdom, id)
     }, 450);
 
 }
+function UpdateSpamReportButton(reply) {
+    if (!IsSpamReportAndBlockEnable)
+        return;
+    let names = reply.getElementsByClassName("css-175oi2r r-1d09ksm r-18u37iz r-1wbh5a2");
+    if (names.length <= 0)
+        return;
+    names = names[0];
+    if (names.children.length > 1)
+        return;
+    //点
+    let dot = document.createElement("div");
+    dot.setAttribute("dir", "ltr");
+    dot.setAttribute("aria-hidden", "true");
+    dot.setAttribute("class", "css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
+    dot.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
+    dot.innerHTML = `<span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">·</span>`;
+    //テキスト
+    let sbbtn = document.createElement("div");
+    sbbtn.setAttribute("dir", "ltr");
+    sbbtn.setAttribute("class", "ATS_SpamReportAndBlockElem css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
+    sbbtn.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
+    let reporthtml = "スパム報告してブロック";
+    //横が500px以上でPCのスタイルになるっぽい
+    const isPC = window.innerWidth >= 500;
+    console.log("isPC:" + isPC);
+    if (!isPC) {
+        sbbtn.style.right = "38%";
+        sbbtn.style.position = "relative";
+        reporthtml = "<br>" + reporthtml;
+    }
+    sbbtn.innerHTML = `<a href="javascript:void(0);"><span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">${reporthtml}</span></a>`;
+    sbbtn.addEventListener("click", function ()
+    {
+        const menuButton = reply.querySelector('div[data-testid="caret"]');
+        const layers = document.getElementById("layers");
+        layers.setAttribute("style", layers.getAttribute("style") + "display:none;")
+        menuButton.click();
+        let waitedcount = 0;
+        setTimeout(function () {
+            let Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
+            let Dropdown_phone = [];
+            if (Dropdown == null) {
+                Dropdown_phone = document.body.getElementsByClassName("css-175oi2r r-1ny4l3l r-18u37iz r-1pi2tsx r-1777fci r-1xcajam r-ipm5af r-g6jmlv r-1kihuf0 r-xr3zp9 r-obd0qt r-1ur9v65 r-1d2f490");
+                if (Dropdown_phone.length <= 0) {
+                    waitedcount++;
+                    if (waitedcount >= 4) {
+                        //clearInterval(DropdownIntervals[id]);
+                    }
+                    layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+                    return;
+                }
+                Dropdown = Dropdown_phone[0];
+            }
+            layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+            //clearInterval(DropdownIntervals[id]);
+            Dropdown.setAttribute("style", "display:none;")
+            const items = Dropdown.querySelectorAll('div[tabindex="0"]');
+            let clicked = false;
+            let targettext = "ポストさんを報告";
+            let buttons = {};
+            for (let i = 1; i < items.length; i++) {
+                buttons[items[i].innerText] = items[i];
+            }
+            for (i = 1; i < items.length; i++) {
+                if (!items[i].innerText.includes(targettext))
+                    continue;
+                items[i].click();
+                clicked = true;
+                break;
+            }
+            const overlays = document.getElementsByClassName("css-175oi2r r-zchlnj r-u8s1d r-1d2f490 r-ipm5af r-1p0dtai r-105ug2t");
+            if (overlays.length > 0)
+                overlays[0].remove();
+            let triedcount = 0;
+            const showpopupTask = setInterval(function () {
+                const Popup = document.getElementsByClassName("css-175oi2r r-1wbh5a2 r-htvplk r-1udh08x r-1867qdf r-kwpbio r-rsyp9y r-1pjcn9w r-1279nm1");
+                if (Popup.length >= 1 && Popup[0].style.display != "none") {
+                    Popup[0].style.display = "none";
+                }
+                const Buttons = document.getElementsByClassName("css-175oi2r r-1habvwh r-18u37iz r-16y2uox r-1wtj0ep r-16x9es5 r-1dye5f7 r-1f1sjgu r-1l7z4oj r-i023vh r-gy4na3 r-o7ynqc r-6416eg r-1ny4l3l");
+                let clicked = false;
+                for (let i = 0; i < Buttons.length; i++) {
+                    if (Buttons[i].innerText.includes("金銭的詐欺、悪意のあるリンクのポスト、ハッシュタグの乱用、偽のエンゲージメント、しつこい返信/リポスト/ダイレクトメッセージ")) {
+                        Buttons[i].click();
+                        clicked = true;
+                        break;
+                    }
+                }
+                if (clicked) {
+                    // 「次へ」をクリックする
+                    document.
+                        getElementsByClassName(
+                            "css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-19yznuf r-64el8z r-1dye5f7 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"
+                        )[0].click();
+                    let clickBlockButtonTriedCount = 0;
+                    const clickBlockButtonTask = setInterval(function () {
+                        //ブロックボタンをクリック
+                        const ConfirmButtons = document.getElementsByClassName("css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-ywje51 r-usiww2 r-13qz1uu r-2yi16 r-1qi8awa r-ymttw5 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l");
+                        if (ConfirmButtons.length >= 2) {
+                            ConfirmButtons[1].click();
+                            clearInterval(clickBlockButtonTask);
+                        // ミュートボタンのみの場合は閉じる
+                        } else if (ConfirmButtons.length == 1) {
+                            clearInterval(clickBlockButtonTask);
+                        } else {
+                            clickBlockButtonTriedCount++;
+                            if (clickBlockButtonTriedCount >= 30) {
+                                clearInterval(clickBlockButtonTask);
+                            }
+                        }
+                    }, 50);
+                    clearInterval(showpopupTask);
+                } else {
+                    console.log("Failed spam click");
+                    triedcount++;
+                    if (triedcount >= 30) {
+                        document.querySelector('div[aria-label="閉じる"]')?.click();
+                        clearInterval(showpopupTask);
+                    }
+                }
+            }, 50);
+        }, 20);
+    });
+    names.appendChild(dot);
+    names.appendChild(sbbtn);
+}
 function UpdateReplyObjects()
 {
     const replys = document.querySelectorAll("div[data-testid='cellInnerDiv']");
@@ -465,6 +613,9 @@ function UpdateReplyObjects()
     for (var i = 2; i < replys.length; i++)
     {
         if (replys[i] == null)
+            continue;
+        UpdateSpamReportButton(replys[i]);
+        if (!IsTweetAutoProcessing)
             continue;
         const atsdata = replys[i].getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
@@ -490,6 +641,8 @@ function UpdateReplyObjects()
         }
         CurrentUserIds.push(userid)
     }
+    if (!IsTweetAutoProcessing)
+        return;
     for (var i = 2; i < replys.length; i++) {
         const reply = replys[i];
         if (reply == null)
@@ -589,6 +742,16 @@ function isTwitterProfileURL(url) {
     const isMatch = pattern.test(url);
 
     return isMatch;
+}
+function UpdateSearchObjects() {
+    const tweets = document.querySelectorAll("div[data-testid='cellInnerDiv']");
+    if (tweets.length <= 0)
+        return;
+    for (var i = 0; i < tweets.length; i++) {
+        if (tweets[i] == null)
+            continue;
+        UpdateSpamReportButton(tweets[i]);
+    }
 }
 // TwitterのURLを判定する関数
 function isTwitterNotificationURL(url) {
@@ -714,6 +877,23 @@ function CheckAndUpdateUrl()
                 }
             }, 500);
         }
+        else if (location.pathname == "/search") {
+            var observer = new MutationObserver(UpdateSearchObjects);
+
+            window.setTimeout(function () {
+                UpdateSearchObjects();
+                currentInterval = setInterval(() => {
+                    UpdateSearchObjects();
+                }, 750);
+                if (document.getElementsByTagName("section").length > 0) {
+                    //監視の開始
+                    observer.observe(document.getElementsByTagName("section")[0].parentElement, {
+                        attributes: true,
+                        childList: true
+                    });
+                }
+            }, 500);
+        }
         else if (isTwitterProfileURL(lastlocation))
         {
             currentInterval = setInterval(() => {
@@ -739,9 +919,9 @@ setInterval(() => {
 }, 750);
 
 // マッチング
-if (isTweetURL(location.href) || isTwitterNotificationURL(location.href)) {
+if (isTweetURL(location.href) || isTwitterNotificationURL(location.href) || location.pathname == "/search") {
     const llinterval = setInterval(function () {
-        if (isTweetURL(location.href) || isTwitterNotificationURL(location.href)) {
+        if (isTweetURL(location.href) || isTwitterNotificationURL(location.href) || location.pathname == "/search") {
             if (document.getElementsByTagName("section").length >= 1) {
                 lastlocation = "";
                 clearInterval(llinterval);
@@ -782,12 +962,6 @@ chrome.storage.onChanged.addListener(function (changes, area) {
         else
             BlockedTweetCount = 0
     }
-    if ("BlockedTweetCount" in changes) {
-        if (changes.BlockedTweetCount)
-            BlockedTweetCount = changes.BlockedTweetCount.newValue;
-        else
-            BlockedTweetCount = 0
-    }
     if ("SpamCope" in changes) {
         if (changes.SpamCope)
             CopeType = changes.SpamCope.newValue;
@@ -795,6 +969,14 @@ chrome.storage.onChanged.addListener(function (changes, area) {
     if ("IsTweetHideAuthorOnly" in changes) {
         if (changes.IsTweetHideAuthorOnly)
             IsAutoTweetHideAuthorOnly = changes.IsTweetHideAuthorOnly.newValue;
+    }
+    if ("IsTweetAutoProcessing" in changes) {
+        if (changes.IsTweetAutoProcessing)
+            IsTweetAutoProcessing = changes.IsTweetAutoProcessing.newValue;
+    }
+    if ("IsSpamReportAndBlockEnable" in changes) {
+        if (changes.IsSpamReportAndBlockEnable)
+            IsSpamReportAndBlockEnable = changes.IsSpamReportAndBlockEnable.newValue;
     }
 });
 console.log("Loaded AntiTwitterSpam")

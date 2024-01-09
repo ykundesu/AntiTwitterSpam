@@ -10,12 +10,25 @@ function addwhite() {
 let isblocktaskended = true;
 let lastblocked = -1;
 window.addEventListener('DOMContentLoaded', function () {
-    UpdateBlocked();
+    UpdatePopup();
     setInterval(() => {
         if (isblocktaskended)
-            UpdateBlocked();
+            UpdatePopup();
     }, 500);
 
+    const IsTweetAutoProcessing = document.getElementById("IsTweetAutoProcessing");
+    chrome.storage.local.get("IsTweetAutoProcessing", function (nowIsTweetAutoProcessing) {
+        if (nowIsTweetAutoProcessing.IsTweetAutoProcessing == null)
+            nowIsTweetAutoProcessing = true;
+        else
+            nowIsTweetAutoProcessing = nowIsTweetAutoProcessing.IsTweetAutoProcessing;
+        IsTweetAutoProcessing.checked = nowIsTweetAutoProcessing;
+    });
+    IsTweetAutoProcessing.onchange = function () {
+        console.log("onchanged");
+        chrome.storage.local.set({ IsTweetAutoProcessing: this.checked });
+        UpdateOption();
+    };
 
     const IsTweetHideAuthorOnly = document.getElementById("IsTweetHideAuthorOnly");
 
@@ -53,6 +66,18 @@ window.addEventListener('DOMContentLoaded', function () {
         chrome.storage.local.set({ IsTweetHideAuthorOnly: this.checked });
     };
 
+    const IsSpamReportAndBlockEnable = document.getElementById("IsSpamReportAndBlockEnable");
+    chrome.storage.local.get("IsSpamReportAndBlockEnable", function (nowIsSpamReportAndBlockEnable) {
+        if (nowIsSpamReportAndBlockEnable.IsSpamReportAndBlockEnable == null)
+            nowIsSpamReportAndBlockEnable = true;
+        else
+            nowIsSpamReportAndBlockEnable = nowIsSpamReportAndBlockEnable.IsSpamReportAndBlockEnable;
+        IsSpamReportAndBlockEnable.checked = nowIsSpamReportAndBlockEnable;
+    });
+    IsSpamReportAndBlockEnable.onchange = function () {
+        chrome.storage.local.set({ IsSpamReportAndBlockEnable: this.checked });
+    };
+
 
     /*
     document.getElementById('addw').addEventListener('click',
@@ -63,8 +88,7 @@ window.addEventListener('DOMContentLoaded', function () {
 async function UpdateBlocked()
 {
     isblocktaskended = false;
-    await chrome.storage.local.get("BlockedTweetCount", function (nowblocked)
-    {
+    await chrome.storage.local.get("BlockedTweetCount", function (nowblocked) {
         if (nowblocked.BlockedTweetCount == null)
             nowblocked = 0;
         else
@@ -72,7 +96,28 @@ async function UpdateBlocked()
         if (nowblocked != lastblocked)
             document.getElementById("blocked").innerText = lastblocked = nowblocked;
         isblocktaskended = true;
-});
+    });
+}
+async function UpdatePopup()
+{
+    UpdateBlocked();
+    UpdateOption();
+}
+async function UpdateOption()
+{
+    // IsTweetAutoProcessingをstorageから取得して有効ならTweetAutoProcessOptionを表示、でなければ非表示にする
+    await chrome.storage.local.get("IsTweetAutoProcessing", function (nowIsTweetAutoProcessing) {
+        if (nowIsTweetAutoProcessing.IsTweetAutoProcessing == null)
+            nowIsTweetAutoProcessing = true;
+        else
+            nowIsTweetAutoProcessing = nowIsTweetAutoProcessing.IsTweetAutoProcessing;
+        if (nowIsTweetAutoProcessing)
+            document.getElementById("TweetAutoProcessOption").setAttribute("style", "");
+        else
+            document.getElementById("TweetAutoProcessOption").setAttribute("style", "display:none;");
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("Options").style.display = "";
+    });
 }
 function ClearWhiteList()
 {
