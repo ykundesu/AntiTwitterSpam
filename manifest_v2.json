@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Anti TwitterSpam",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "browser_action": {
     "default_title": "Anti TwitterSpam",
     "default_popup": "popup.html",
@@ -25,7 +25,8 @@
   ],
   "web_accessible_resources": [
     "icon.png",
-    "twitter_script.js"
+    "twitter_script.js",
+    "twitter_style.css"
   ],
   "browser_specific_settings": {
     "gecko": {
