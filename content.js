@@ -477,6 +477,16 @@ function ClickButton(tweetdom, id)
     }, 300);
 
 }
+function GenerateDot() {
+    let dot = document.createElement("div");
+    dot.setAttribute("dir", "ltr");
+    dot.setAttribute("aria-hidden", "true");
+    dot.setAttribute("class", "css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
+    dot.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
+    dot.innerHTML = `<span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">·</span>`;
+    return dot;
+
+}
 function UpdateSpamReportButton(reply) {
     if (!IsSpamReportAndBlockEnable)
         return;
@@ -486,28 +496,68 @@ function UpdateSpamReportButton(reply) {
     names = names[0];
     if (names.children.length > 1)
         return;
-    //点
-    let dot = document.createElement("div");
-    dot.setAttribute("dir", "ltr");
-    dot.setAttribute("aria-hidden", "true");
-    dot.setAttribute("class", "css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
-    dot.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
-    dot.innerHTML = `<span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">·</span>`;
     //テキスト
     let sbbtn = document.createElement("div");
     sbbtn.setAttribute("dir", "ltr");
     sbbtn.setAttribute("class", "ATS_SpamReportAndBlockElem css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
     sbbtn.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
-    let reporthtml = "スパム報告してブロック";
+    let reporthtml = "📢スパム";
     sbbtn.innerHTML = `<a href="javascript:void(0);"><span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">${reporthtml}</span></a>`;
+    const spamdetail = "金銭的詐欺、悪意のあるリンクのポスト、ハッシュタグの乱用、偽のエンゲージメント、しつこい返信/リポスト/ダイレクトメッセージ";
     sbbtn.addEventListener("click", function ()
     {
-        runSpamAndReport(reply);
+        runReport(reply, [spamdetail]);
     });
-    names.appendChild(dot);
+    //テキスト
+    let sensbtn = document.createElement("div");
+    sensbtn.setAttribute("dir", "ltr");
+    sensbtn.setAttribute("class", "ATS_SpamReportAndBlockElem css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
+    sensbtn.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
+    const sensitivedetail = [
+        "暴力的出来事の否定、特定の人物への嫌がらせや嫌がらせの扇動",
+        "不本意な性的コンテンツや、合意なく個人を性的な対象として見る、露骨な性的対象化は禁止しています"
+    ];
+    reporthtml = "📢攻撃的→センシティブ";
+    sensbtn.innerHTML = `<a href="javascript:void(0);"><span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">${reporthtml}</span></a>`;
+    sensbtn.addEventListener("click", function () {
+        runReport(reply, sensitivedetail);
+    });
+    names.appendChild(GenerateDot());
     names.appendChild(sbbtn);
+    names.appendChild(GenerateDot());
+    names.appendChild(sensbtn);
 }
-function runSpamAndReport(reply) {
+function RunClickBlockButtonTask(reply) {
+    let clickBlockButtonTriedCount = 0;
+    const clickBlockButtonTask = setInterval(function () {
+        //ブロックボタンをクリック
+        const ConfirmButtons = document.getElementsByClassName("css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-ywje51 r-usiww2 r-13qz1uu r-2yi16 r-1qi8awa r-ymttw5 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l");
+        let ConfirmButton = null;
+        if (ConfirmButtons.length >= 1) {
+            if (ConfirmButtons.length == 1) {
+                if (ConfirmButtons[0].innerText.endsWith("さんをブロック"))
+                    ConfirmButton = ConfirmButtons[0];
+            } else {
+                ConfirmButton = ConfirmButtons[1];
+            }
+            // ミュートボタンのみの場合は閉じる
+            if (ConfirmButton != null) {
+                ConfirmButton.click();
+            }
+            else {
+                document.querySelector('div[data-testid="ocfSettingsListNextButton"]')?.click();
+                clearInterval(clickBlockButtonTask);
+            }
+        } else {
+            clickBlockButtonTriedCount++;
+            if (clickBlockButtonTriedCount >= 30) {
+                document.querySelector('div[data-testid="ocfSettingsListNextButton"]')?.click();
+                clearInterval(clickBlockButtonTask);
+            }
+        }
+    }, 50);
+}
+function runReport(reply, details) {
     const menuButton = reply.querySelector('div[data-testid="caret"]');
     const layers = document.getElementById("layers");
     layers.setAttribute("style", layers.getAttribute("style") + "display:none;")
@@ -515,11 +565,10 @@ function runSpamAndReport(reply) {
     let waitedcount = 0;
     setTimeout(function () {
         let Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
+        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
         if (Dropdown == null) {
-            layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
             return;
         }
-        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
         Dropdown.setAttribute("style", "display:none;")
         const items = Dropdown.querySelectorAll('div[tabindex="0"]');
         let clicked = false;
@@ -547,7 +596,7 @@ function runSpamAndReport(reply) {
             const Buttons = document.getElementsByClassName("css-175oi2r r-1habvwh r-18u37iz r-16y2uox r-1wtj0ep r-16x9es5 r-1dye5f7 r-1f1sjgu r-1l7z4oj r-i023vh r-gy4na3 r-o7ynqc r-6416eg r-1ny4l3l");
             let clicked = false;
             for (let i = 0; i < Buttons.length; i++) {
-                if (Buttons[i].innerText.includes("金銭的詐欺、悪意のあるリンクのポスト、ハッシュタグの乱用、偽のエンゲージメント、しつこい返信/リポスト/ダイレクトメッセージ")) {
+                if (Buttons[i].innerText.includes(details[0])) {
                     Buttons[i].click();
                     clicked = true;
                     break;
@@ -558,35 +607,38 @@ function runSpamAndReport(reply) {
                 document.
                     getElementsByClassName(
                         "css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-19yznuf r-64el8z r-1dye5f7 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"
-                    )[0].click();
-                let clickBlockButtonTriedCount = 0;
-                const clickBlockButtonTask = setInterval(function () {
-                    //ブロックボタンをクリック
-                    const ConfirmButtons = document.getElementsByClassName("css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-ywje51 r-usiww2 r-13qz1uu r-2yi16 r-1qi8awa r-ymttw5 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l");
-                    let ConfirmButton = null;
-                    if (ConfirmButtons.length >= 1) {
-                        if (ConfirmButtons.length == 1) {
-                            if (ConfirmButtons[0].innerText.endsWith("さんをブロック"))
-                                ConfirmButton = ConfirmButtons[0];
+                )[0].click();
+                if (details.length >= 2) {
+                    triedcount = 0;
+                    const processNextPopupTask = setInterval(function () {
+                        const Buttons2 = document.getElementsByClassName("css-175oi2r r-1habvwh r-18u37iz r-16y2uox r-1wtj0ep r-16x9es5 r-1dye5f7 r-1f1sjgu r-1l7z4oj r-i023vh r-gy4na3 r-o7ynqc r-6416eg r-1ny4l3l");
+                        let clicked2 = false;
+                        for (let i = 0; i < Buttons2.length; i++) {
+                            if (Buttons2[i].innerText.includes(details[1])) {
+                                Buttons2[i].click();
+                                clicked2 = true;
+                                break;
+                            }
+                        }
+                        if (clicked2) {
+                            document.
+                                getElementsByClassName(
+                                    "css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-19yznuf r-64el8z r-1dye5f7 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"
+                                )[0].click();
+                            RunClickBlockButtonTask(reply);
+                            clearInterval(processNextPopupTask);
                         } else {
-                            ConfirmButton = ConfirmButtons[1];
+                            triedcount++;
+                            if (triedcount >= 30) {
+                                document.querySelector('div[aria-label="閉じる"]')?.click();
+                                clearInterval(processNextPopupTask);
+                            }
                         }
-                        // ミュートボタンのみの場合は閉じる
-                        if (ConfirmButton != null) {
-                            ConfirmButton.click();
-                        }
-                        else {
-                            document.querySelector('div[data-testid="ocfSettingsListNextButton"]')?.click();
-                            clearInterval(clickBlockButtonTask);
-                        }
-                    } else {
-                        clickBlockButtonTriedCount++;
-                        if (clickBlockButtonTriedCount >= 30) {
-                            document.querySelector('div[data-testid="ocfSettingsListNextButton"]')?.click();
-                            clearInterval(clickBlockButtonTask);
-                        }
-                    }
-                }, 50);
+                    }, 50);
+                }
+                else {
+                    RunClickBlockButtonTask(reply);
+                }
                 clearInterval(showpopupTask);
             } else {
                 console.log("Failed spam click");
@@ -609,13 +661,16 @@ function UpdateReplyObjects()
     let CurrentUserIds = [];
     let DoubleTexters = [];
     const IsPC = isPC()
+    if (IsPC) {
+        for (var i = 0; i < replys.length; i++) {
+            UpdateSpamReportButton(replys[i]);
+        }
+    }
+    if (!IsTweetAutoProcessing)
+        return;
     for (var i = 2; i < replys.length; i++)
     {
         if (replys[i] == null)
-            continue;
-        if (IsPC)
-            UpdateSpamReportButton(replys[i]);
-        if (!IsTweetAutoProcessing)
             continue;
         const atsdata = replys[i].getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
@@ -641,8 +696,6 @@ function UpdateReplyObjects()
         }
         CurrentUserIds.push(userid)
     }
-    if (!IsTweetAutoProcessing)
-        return;
     for (var i = 2; i < replys.length; i++) {
         const reply = replys[i];
         if (reply == null)
