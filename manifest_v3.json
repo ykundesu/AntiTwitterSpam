@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anti TwitterSpam",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "action": {
     "default_title": "Anti TwitterSpam",
     "default_popup": "popup.html",

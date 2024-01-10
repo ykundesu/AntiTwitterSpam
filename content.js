@@ -7,6 +7,8 @@ let IsAutoTweetHideAuthorOnly = false;
 let IsTweetAutoProcessing = true;
 let IsSpamReportAndBlockEnable = true;
 
+let lastBlockedCount = -1;
+
 let twitterscript = document.createElement('script')
 twitterscript.src = chrome.runtime.getURL('twitter_script.js')
 document.documentElement.appendChild(twitterscript);
@@ -304,6 +306,7 @@ chrome.storage.local.get("BlockedTweetCount", function (BlockedGeted) {
         BlockedTweetCount = BlockedGeted.BlockedTweetCount;
     else
         BlockedTweetCount = 0
+    lastBlockedCount = BlockedTweetCount;
 });
 chrome.storage.local.get("SpamCope", function (SpamCope) {
     if (SpamCope.SpamCope)
@@ -337,7 +340,6 @@ function SetBlockTweet(reply, styletemp, tweetid)
         return;
     BlockedTweetIds.push(tweetid);
     BlockedTweetCount++;
-    chrome.storage.local.set({ BlockedTweetCount: BlockedTweetCount });
 }
 function IncludeWhiteList(userid)
 {
@@ -437,7 +439,7 @@ function ClickButton(tweetdom, id)
             return;
         for (i = 1; i < items.length;i++)
         {
-            if (!items[i].innerText.includes(targettext))
+            if (!items[i].innerText.endsWith(targettext))
                 continue;
             items[i].click();
             clicked = true;
@@ -467,12 +469,12 @@ function ClickButton(tweetdom, id)
                 yesornobtn.click();
                 clearInterval(ClickBlockOrNoneIntervals[id]);
                 layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""));
-            }, 1);
+            }, 10);
         }
         const overlays = document.getElementsByClassName("css-175oi2r r-zchlnj r-u8s1d r-1d2f490 r-ipm5af r-1p0dtai r-105ug2t");
         if (overlays.length > 0)
             overlays[0].remove();
-    }, 450);
+    }, 300);
 
 }
 function UpdateSpamReportButton(reply) {
@@ -497,109 +499,105 @@ function UpdateSpamReportButton(reply) {
     sbbtn.setAttribute("class", "ATS_SpamReportAndBlockElem css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
     sbbtn.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
     let reporthtml = "スパム報告してブロック";
-    //横が500px以上でPCのスタイルになるっぽい
-    const isPC = window.innerWidth >= 500;
-    console.log("isPC:" + isPC);
-    if (!isPC) {
-        sbbtn.style.right = "38%";
-        sbbtn.style.position = "relative";
-        reporthtml = "<br>" + reporthtml;
-    }
     sbbtn.innerHTML = `<a href="javascript:void(0);"><span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">${reporthtml}</span></a>`;
     sbbtn.addEventListener("click", function ()
     {
-        const menuButton = reply.querySelector('div[data-testid="caret"]');
-        const layers = document.getElementById("layers");
-        layers.setAttribute("style", layers.getAttribute("style") + "display:none;")
-        menuButton.click();
-        let waitedcount = 0;
-        setTimeout(function () {
-            let Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
-            let Dropdown_phone = [];
-            if (Dropdown == null) {
-                Dropdown_phone = document.body.getElementsByClassName("css-175oi2r r-1ny4l3l r-18u37iz r-1pi2tsx r-1777fci r-1xcajam r-ipm5af r-g6jmlv r-1kihuf0 r-xr3zp9 r-obd0qt r-1ur9v65 r-1d2f490");
-                if (Dropdown_phone.length <= 0) {
-                    waitedcount++;
-                    if (waitedcount >= 4) {
-                        //clearInterval(DropdownIntervals[id]);
-                    }
-                    layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
-                    return;
-                }
-                Dropdown = Dropdown_phone[0];
-            }
-            layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
-            //clearInterval(DropdownIntervals[id]);
-            Dropdown.setAttribute("style", "display:none;")
-            const items = Dropdown.querySelectorAll('div[tabindex="0"]');
-            let clicked = false;
-            let targettext = "ポストさんを報告";
-            let buttons = {};
-            for (let i = 1; i < items.length; i++) {
-                buttons[items[i].innerText] = items[i];
-            }
-            for (i = 1; i < items.length; i++) {
-                if (!items[i].innerText.includes(targettext))
-                    continue;
-                items[i].click();
-                clicked = true;
-                break;
-            }
-            const overlays = document.getElementsByClassName("css-175oi2r r-zchlnj r-u8s1d r-1d2f490 r-ipm5af r-1p0dtai r-105ug2t");
-            if (overlays.length > 0)
-                overlays[0].remove();
-            let triedcount = 0;
-            const showpopupTask = setInterval(function () {
-                const Popup = document.getElementsByClassName("css-175oi2r r-1wbh5a2 r-htvplk r-1udh08x r-1867qdf r-kwpbio r-rsyp9y r-1pjcn9w r-1279nm1");
-                if (Popup.length >= 1 && Popup[0].style.display != "none") {
-                    Popup[0].style.display = "none";
-                }
-                const Buttons = document.getElementsByClassName("css-175oi2r r-1habvwh r-18u37iz r-16y2uox r-1wtj0ep r-16x9es5 r-1dye5f7 r-1f1sjgu r-1l7z4oj r-i023vh r-gy4na3 r-o7ynqc r-6416eg r-1ny4l3l");
-                let clicked = false;
-                for (let i = 0; i < Buttons.length; i++) {
-                    if (Buttons[i].innerText.includes("金銭的詐欺、悪意のあるリンクのポスト、ハッシュタグの乱用、偽のエンゲージメント、しつこい返信/リポスト/ダイレクトメッセージ")) {
-                        Buttons[i].click();
-                        clicked = true;
-                        break;
-                    }
-                }
-                if (clicked) {
-                    // 「次へ」をクリックする
-                    document.
-                        getElementsByClassName(
-                            "css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-19yznuf r-64el8z r-1dye5f7 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"
-                        )[0].click();
-                    let clickBlockButtonTriedCount = 0;
-                    const clickBlockButtonTask = setInterval(function () {
-                        //ブロックボタンをクリック
-                        const ConfirmButtons = document.getElementsByClassName("css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-ywje51 r-usiww2 r-13qz1uu r-2yi16 r-1qi8awa r-ymttw5 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l");
-                        if (ConfirmButtons.length >= 2) {
-                            ConfirmButtons[1].click();
-                            clearInterval(clickBlockButtonTask);
-                        // ミュートボタンのみの場合は閉じる
-                        } else if (ConfirmButtons.length == 1) {
-                            clearInterval(clickBlockButtonTask);
-                        } else {
-                            clickBlockButtonTriedCount++;
-                            if (clickBlockButtonTriedCount >= 30) {
-                                clearInterval(clickBlockButtonTask);
-                            }
-                        }
-                    }, 50);
-                    clearInterval(showpopupTask);
-                } else {
-                    console.log("Failed spam click");
-                    triedcount++;
-                    if (triedcount >= 30) {
-                        document.querySelector('div[aria-label="閉じる"]')?.click();
-                        clearInterval(showpopupTask);
-                    }
-                }
-            }, 50);
-        }, 20);
+        runSpamAndReport(reply);
     });
     names.appendChild(dot);
     names.appendChild(sbbtn);
+}
+function runSpamAndReport(reply) {
+    const menuButton = reply.querySelector('div[data-testid="caret"]');
+    const layers = document.getElementById("layers");
+    layers.setAttribute("style", layers.getAttribute("style") + "display:none;")
+    menuButton.click();
+    let waitedcount = 0;
+    setTimeout(function () {
+        let Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
+        if (Dropdown == null) {
+            layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+            return;
+        }
+        layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
+        Dropdown.setAttribute("style", "display:none;")
+        const items = Dropdown.querySelectorAll('div[tabindex="0"]');
+        let clicked = false;
+        let targettext = "ポストさんを報告";
+        let buttons = {};
+        for (let i = 1; i < items.length; i++) {
+            buttons[items[i].innerText] = items[i];
+        }
+        for (i = 1; i < items.length; i++) {
+            if (!items[i].innerText.endsWith(targettext))
+                continue;
+            items[i].click();
+            clicked = true;
+            break;
+        }
+        const overlays = document.getElementsByClassName("css-175oi2r r-zchlnj r-u8s1d r-1d2f490 r-ipm5af r-1p0dtai r-105ug2t");
+        if (overlays.length > 0)
+            overlays[0].remove();
+        let triedcount = 0;
+        const showpopupTask = setInterval(function () {
+            const Popup = document.getElementsByClassName("css-175oi2r r-1wbh5a2 r-htvplk r-1udh08x r-1867qdf r-kwpbio r-rsyp9y r-1pjcn9w r-1279nm1");
+            if (Popup.length >= 1 && Popup[0].style.display != "none") {
+                Popup[0].style.display = "none";
+            }
+            const Buttons = document.getElementsByClassName("css-175oi2r r-1habvwh r-18u37iz r-16y2uox r-1wtj0ep r-16x9es5 r-1dye5f7 r-1f1sjgu r-1l7z4oj r-i023vh r-gy4na3 r-o7ynqc r-6416eg r-1ny4l3l");
+            let clicked = false;
+            for (let i = 0; i < Buttons.length; i++) {
+                if (Buttons[i].innerText.includes("金銭的詐欺、悪意のあるリンクのポスト、ハッシュタグの乱用、偽のエンゲージメント、しつこい返信/リポスト/ダイレクトメッセージ")) {
+                    Buttons[i].click();
+                    clicked = true;
+                    break;
+                }
+            }
+            if (clicked) {
+                // 「次へ」をクリックする
+                document.
+                    getElementsByClassName(
+                        "css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-19yznuf r-64el8z r-1dye5f7 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"
+                    )[0].click();
+                let clickBlockButtonTriedCount = 0;
+                const clickBlockButtonTask = setInterval(function () {
+                    //ブロックボタンをクリック
+                    const ConfirmButtons = document.getElementsByClassName("css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-ywje51 r-usiww2 r-13qz1uu r-2yi16 r-1qi8awa r-ymttw5 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l");
+                    let ConfirmButton = null;
+                    if (ConfirmButtons.length >= 1) {
+                        if (ConfirmButtons.length == 1) {
+                            if (ConfirmButtons[0].innerText.endsWith("さんをブロック"))
+                                ConfirmButton = ConfirmButtons[0];
+                        } else {
+                            ConfirmButton = ConfirmButtons[1];
+                        }
+                        // ミュートボタンのみの場合は閉じる
+                        if (ConfirmButton != null) {
+                            ConfirmButton.click();
+                        }
+                        else {
+                            document.querySelector('div[data-testid="ocfSettingsListNextButton"]')?.click();
+                            clearInterval(clickBlockButtonTask);
+                        }
+                    } else {
+                        clickBlockButtonTriedCount++;
+                        if (clickBlockButtonTriedCount >= 30) {
+                            document.querySelector('div[data-testid="ocfSettingsListNextButton"]')?.click();
+                            clearInterval(clickBlockButtonTask);
+                        }
+                    }
+                }, 50);
+                clearInterval(showpopupTask);
+            } else {
+                console.log("Failed spam click");
+                triedcount++;
+                if (triedcount >= 30) {
+                    document.querySelector('div[aria-label="閉じる"]')?.click();
+                    clearInterval(showpopupTask);
+                }
+            }
+        }, 50);
+    }, 20);
 }
 function UpdateReplyObjects()
 {
@@ -610,11 +608,13 @@ function UpdateReplyObjects()
     let authoruserid = null;
     let CurrentUserIds = [];
     let DoubleTexters = [];
+    const IsPC = isPC()
     for (var i = 2; i < replys.length; i++)
     {
         if (replys[i] == null)
             continue;
-        UpdateSpamReportButton(replys[i]);
+        if (IsPC)
+            UpdateSpamReportButton(replys[i]);
         if (!IsTweetAutoProcessing)
             continue;
         const atsdata = replys[i].getElementsByTagName("atsdata");
@@ -743,7 +743,12 @@ function isTwitterProfileURL(url) {
 
     return isMatch;
 }
+function isPC() {
+    return window.innerWidth >= 500;
+}
 function UpdateSearchObjects() {
+    if (!isPC())
+        return;
     const tweets = document.querySelectorAll("div[data-testid='cellInnerDiv']");
     if (tweets.length <= 0)
         return;
@@ -768,56 +773,6 @@ function isTweetURL(url) {
 
     return isMatch;
 }
-//封・印
-function UpdateProfileButton(profile, isListed)
-{/*
-    let WhiteText = "に追加";
-    let bc = 0;
-    if (isListed)
-    {
-        WhiteText = "から削除";
-        bc = 255;
-    }
-    //const stylehtml = ".image-container {background-color: white; border-radius: 10px; /* 角丸のサイズを設定 *///overflow: hidden;   /* 角丸を適用するために必要 */} ";
-    /*
-    const basestyle = `border-color: rgb(207, 217, 222); background-color: rgba(${bc},${bc},${bc});`;
-    const inside = `<div id="ATS_towhitebtn" dir="ltr" class="css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-q4m81j r-a023e6 r-rjixqe r-b88u0q r-1awozwy r-6koalj r-18u37iz r-16y2uox r-1777fci" style="color: rgb(${255 - bc},${255 - bc},${255 - bc}); text-overflow: unset;"><span class="css-1qaijid r-dnmrzs r-1udh08x r-3s2u2q r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe" style="text-overflow: unset;">　ホワイトリスト${WhiteText}  <img src="` + chrome.runtime.getURL("icon.png") + '" width="20px" style="vertical-align:top;">　</span></div>';
-    const html = `<div aria-expanded="false" aria-tabindex="0" class="ATS_towhite css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-6gpygo r-1kb76zh r-2yi16 r-1qi8awa r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l" style="${basestyle}">${inside}</div>`;
-    //ATS_towhiteがclass名に入っているかを確認する
-    ATS_towhite = profile.getElementsByClassName("ATS_towhite");
-    if (ATS_towhite.length <= 0)
-    {
-        profile.parentElement.innerHTML = html + profile.parentElement.innerHTML;
-    } else
-    {
-        ATS_towhite[0].innerHTML = inside;
-        ATS_towhite[0].setAttribute("style", basestyle);
-    }
-    let button = document.getElementById('ATS_towhitebtn');
-    button.addEventListener('click', function () { OnClickWhitelist(profile); });*/
-}
-function OnClickWhitelist(dom)
-{
-    let userid = location.href.split("/").slice(-1)[0];
-    if (location.href.endsWith("/"))
-        userid = location.href.split("/").slice(-2)[0];
-    let added = true;
-    if (IncludeWhiteList(userid))
-    {
-        console.log("Removed:" + userid)
-        RemoveWhiteList(userid);
-        added = false;
-    } else
-    {
-        console.log("Added:"+userid)
-        AddWhiteList(userid);
-    }
-    UpdateProfileButton(dom, added);
-}
-/*const te = document.getElementsByClassName("css-175oi2r")
-const reactPropsName = Object.getOwnPropertyNames(te).filter((n) => n.startsWith("__reactProps$"))[0];
-const reactProps = te[0][reactPropsName];
-console.log(reactProps)*/
 /** @type {string} */
 var lastlocation = location.href;
 let currentInterval = null;
@@ -829,8 +784,14 @@ setInterval(() => {
         layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
 }, 1500);
 setInterval(() => {
+    if (BlockedTweetCount != lastBlockedCount) {
+        chrome.storage.local.set({ BlockedTweetCount: BlockedTweetCount });
+        lastBlockedCount = BlockedTweetCount;
+    }
     UpdateTask();
-}, 1500);
+}, 750);
+let currentObserver = null;
+let currentTimeout = null;
 function CheckAndUpdateUrl()
 {
     if (lastlocation != location.href) {
@@ -838,21 +799,29 @@ function CheckAndUpdateUrl()
             clearInterval(currentInterval);
             currentInterval = null;
         }
+        if (currentTimeout != null) {
+            clearTimeout(currentTimeout);
+            currentTimeout = null;
+        }
+        if (currentObserver != null) {
+            currentObserver.disconnect();
+            currentObserver = null;
+        }
         console.log(lastlocation + " to " + location.href + " !")
         lastlocation = location.href
         // マッチング
         /** @type {boolean} */
         if (isTweetURL(lastlocation)) {
-            var observer = new MutationObserver(UpdateReplyObjects);
+            currentObserver = new MutationObserver(UpdateReplyObjects);
 
-            window.setTimeout(function () {
+            currentTimeout = window.setTimeout(function () {
                 UpdateReplyObjects();
                 currentInterval = setInterval(() => {
                     UpdateReplyObjects();
-                }, 500);
+                }, 750);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
-                    observer.observe(document.getElementsByTagName("section")[0].lastChild.lastChild, {
+                    currentObserver.observe(document.getElementsByTagName("section")[0].lastChild.lastChild, {
                         attributes: true,
                         childList: true
                     });
@@ -861,16 +830,16 @@ function CheckAndUpdateUrl()
         }
         else if (isTwitterNotificationURL(lastlocation))
         {
-            var observer = new MutationObserver(UpdateNotificationObjects);
+            currentObserver = new MutationObserver(UpdateNotificationObjects);
 
-            window.setTimeout(function () {
+            currentTimeout = window.setTimeout(function () {
                 UpdateNotificationObjects();
                 currentInterval = setInterval(() => {
                     UpdateNotificationObjects();
                 }, 750);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
-                    observer.observe(document.getElementsByTagName("section")[0].parentElement, {
+                    currentObserver.observe(document.getElementsByTagName("section")[0].parentElement, {
                         attributes: true,
                         childList: true
                     });
@@ -878,63 +847,35 @@ function CheckAndUpdateUrl()
             }, 500);
         }
         else if (location.pathname == "/search") {
-            var observer = new MutationObserver(UpdateSearchObjects);
+            currentObserver = new MutationObserver(UpdateSearchObjects);
 
-            window.setTimeout(function () {
+            currentTimeout = window.setTimeout(function () {
                 UpdateSearchObjects();
                 currentInterval = setInterval(() => {
                     UpdateSearchObjects();
                 }, 750);
                 if (document.getElementsByTagName("section").length > 0) {
                     //監視の開始
-                    observer.observe(document.getElementsByTagName("section")[0].parentElement, {
+                    currentObserver.observe(document.getElementsByTagName("section")[0].parentElement, {
                         attributes: true,
                         childList: true
                     });
                 }
             }, 500);
         }
-        else if (isTwitterProfileURL(lastlocation))
-        {
-            currentInterval = setInterval(() => {
-                const profile = document.getElementsByClassName("css-175oi2r r-obd0qt r-18u37iz r-1w6e6rj r-1h0z5md r-dnmrzs")[0];
-                //自分かを判定(自分ならボタンが1つしかない)
-                if (profile == null || profile == undefined || profile.children.length <= 1)
-                    return;
-                UpdateProfileButton(profile, IncludeWhiteList(location.href.split("/").slice(-1)[0]));
-            }, 500);
-            window.setTimeout(function () {
-                const profile = document.getElementsByClassName("css-175oi2r r-obd0qt r-18u37iz r-1w6e6rj r-1h0z5md r-dnmrzs")[0];
-                //自分かを判定(自分ならボタンが1つしかない)
-                if (profile == null || profile == undefined || profile.children.length <= 1)
-                    return;
-                UpdateProfileButton(profile, IncludeWhiteList(location.href.split("/").slice(-1)[0]));
-            }, 250);
-        }
-
     }
 }
+// 0.3秒ごとにURLをチェックして更新する
+// 阪神はマジで関係ないです
 setInterval(() => {
     CheckAndUpdateUrl();
-}, 750);
+}, 334);
 
 // マッチング
 if (isTweetURL(location.href) || isTwitterNotificationURL(location.href) || location.pathname == "/search") {
     const llinterval = setInterval(function () {
         if (isTweetURL(location.href) || isTwitterNotificationURL(location.href) || location.pathname == "/search") {
             if (document.getElementsByTagName("section").length >= 1) {
-                lastlocation = "";
-                clearInterval(llinterval);
-            }
-        } else {
-            clearInterval(llinterval);
-        }
-    }, 1000);
-}
-else if (isTwitterProfileURL(location.href)) {
-    const llinterval = setInterval(function () {
-        if (isTwitterProfileURL(location.href)) {
-            if (document.getElementsByClassName("css-175oi2r r-obd0qt r-18u37iz r-1w6e6rj r-1h0z5md r-dnmrzs").length >= 1) {
                 lastlocation = "";
                 clearInterval(llinterval);
             }
@@ -961,6 +902,7 @@ chrome.storage.onChanged.addListener(function (changes, area) {
             BlockedTweetCount = changes.BlockedTweetCount.newValue;
         else
             BlockedTweetCount = 0
+        lastBlockedCount = BlockedTweetCount;
     }
     if ("SpamCope" in changes) {
         if (changes.SpamCope)
