@@ -531,7 +531,8 @@ function runReport(reply, details) {
         if (Dropdown == null) {
             return;
         }
-        Dropdown.setAttribute("style", "display:none;")
+        console.log("showed Dropdown");
+        Dropdown.style.display = "none";
         const items = Dropdown.querySelectorAll('div[tabindex="0"]');
         let clicked = false;
         let targettext = "ポストさんを報告";
@@ -592,7 +593,7 @@ function runReport(reply, details) {
                             triedcount++;
                             if (triedcount >= 30) {
                                 const Popup = document.getElementsByClassName("css-175oi2r r-1wbh5a2 r-htvplk r-1udh08x r-1867qdf r-kwpbio r-rsyp9y r-1pjcn9w r-1279nm1");
-                                if (Popup.length >= 1 && Popup[0].style.display != "none")
+                                if (Popup.length >= 1 && Popup[0].style.display == "none")
                                     Popup[0].style.display = "";
                                 clearInterval(processNextPopupTask);
                                 document.querySelector('div[aria-label="閉じる"]')?.click();
@@ -607,8 +608,8 @@ function runReport(reply, details) {
             } else {
                 console.log("Failed spam click");
                 triedcount++;
-                if (triedcount >= 30) {
-                    if (Popup.length >= 1 && Popup[0].style.display != "none")
+                if (triedcount >= 80) {
+                    if (Popup.length >= 1 && Popup[0].style.display == "none")
                         Popup[0].style.display = "";
                     clearInterval(showpopupTask);
                     document.querySelector('div[aria-label="閉じる"]')?.click();
