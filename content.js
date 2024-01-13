@@ -1,7 +1,3 @@
-// 誰かこれやってください！！！
-// ・自動報告の実装(内部APIを叩けずに保留)
-// だれかプルリク出して！！！頼む！！！出来なかったんや！！！
-
 let CopeType = "None";
 let IsAutoTweetHideAuthorOnly = false;
 let IsTweetAutoProcessing = true;
@@ -167,7 +163,6 @@ function UpdateTask()
     }
     if (document.querySelector('.css-175oi2r div[data-testid="Dropdown"]') != null)
         return;
-    console.log("running ClickButton");
     ClickButton(MuteTasks[0], MuteTaskIdMax++);
     MuteTasks.shift();
 }
@@ -272,33 +267,6 @@ function containsKanji(text) {
 
     return japaneseRegex.test(text);
 }
-function findElementsByTag(parentNode, targetTag, resultArray) {
-    // parentNodeが存在しない場合や子要素がない場合は終了
-    if (!parentNode || !parentNode.children) {
-        return;
-    }
-
-    // 子要素を順番にチェック
-    for (let i = 0; i < parentNode.children.length; i++) {
-        const childNode = parentNode.children[i];
-
-        // 特定のクラスを持つ場合は結果に追加
-        if (childNode.nodeName == targetTag) {
-            resultArray.push(childNode);
-        }
-
-        // 子要素の中も再帰的に検索
-        findElementsByTag(childNode, targetTag, resultArray);
-    }
-}
-let whiteList = [];
-chrome.storage.local.get("Whitelist", function (whiteListGeted)
-{
-    if (whiteListGeted.Whitelist)
-        whiteList = whiteListGeted.Whitelist.split('@');
-    else
-        whiteList = [];
-});
 let BlockedTweetIds = [];
 let BlockedTweetCount = 0;
 chrome.storage.local.get("BlockedTweetCount", function (BlockedGeted) {
@@ -332,38 +300,14 @@ chrome.storage.local.get("IsSpamReportAndBlockEnable", function (IsSpamReportAnd
         IsSpamReportAndBlockEnable = IsSpamReportAndBlockEnable.IsSpamReportAndBlockEnable;
     console.log("Loaded IsSpamReportAndBlockEnable:" + IsSpamReportAndBlockEnable)
 });
-function SetBlockTweet(reply, styletemp, tweetid)
+function SetBlockTweet(reply, tweetid)
 {
-    reply.setAttribute("style", styletemp + "; display:none;");
+    reply.style.display = "none";
     //今回のセッションでブロック済みならパス
     if (BlockedTweetIds.includes(tweetid))
         return;
     BlockedTweetIds.push(tweetid);
     BlockedTweetCount++;
-}
-function IncludeWhiteList(userid)
-{
-    return GetWhiteList().includes(userid.toLowerCase());
-}
-function GetWhiteList() {
-    return whiteList;
-}
-function AddWhiteList(userid)
-{
-    userid = userid.toLowerCase();
-    if (whiteList.includes(userid))
-        return;
-    whiteList.push(userid);
-    chrome.storage.local.set({ Whitelist: whiteList.join('@') });
-}
-function RemoveWhiteList(userid) {
-    userid = userid.toLowerCase();
-    if (!whiteList.includes(userid))
-        return;
-    whiteList = whiteList.filter(function (item) {
-        return item != userid;
-    });
-    chrome.storage.local.set({ Whitelist: whiteList.join('@') });
 }
 const TwitterProfileRelativeURL = /^\/[^\/]+$/;
 function UpdateNotificationObjects() {
@@ -378,8 +322,7 @@ function UpdateNotificationObjects() {
         const tweetText = reply.querySelector("div[data-testid='tweetText']")
         if (tweetText == null)
             continue;
-        const styletemp = reply.getAttribute("style");
-        if (styletemp.indexOf("display:none;") !== -1)
+        if (reply.style.display == "none")
             continue;
         const atsdata = reply.getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
@@ -391,7 +334,7 @@ function UpdateNotificationObjects() {
         if (tweetdetail.entities.user_mentions.length >= 8)
         {
             const tweetid = tweetdetail.id_str;
-            SetBlockTweet(reply, styletemp, tweetid);
+            SetBlockTweet(reply, tweetid);
             const username = tweetdetail.user.name;
             console.log(username + " was spam! reason:Notification Mention Spam");
             console.log(username + " is @" + tweetdetail.user.screen_name)
@@ -477,15 +420,47 @@ function ClickButton(tweetdom, id)
     }, 300);
 
 }
+let DotTemplate = null;
+function GetDotTemplate() {
+    if (DotTemplate != null)
+        return DotTemplate;
+    DotTemplate = document.createElement("div");
+    DotTemplate.setAttribute("dir", "ltr");
+    DotTemplate.setAttribute("aria-hidden", "true");
+    DotTemplate.setAttribute("class", "css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
+    DotTemplate.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
+    DotTemplate.innerHTML = `<span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">·</span>`;
+    return DotTemplate;
+}
 function GenerateDot() {
-    let dot = document.createElement("div");
-    dot.setAttribute("dir", "ltr");
-    dot.setAttribute("aria-hidden", "true");
-    dot.setAttribute("class", "css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
-    dot.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
-    dot.innerHTML = `<span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">·</span>`;
-    return dot;
+    return GetDotTemplate().cloneNode(true);
+}
+let SpamReportButtonTemplate = {};
+/** @type {HTMLDivElement} */
+function GetSpamReportButtonTemplate(reporttexts) {
+    if (reporttexts in SpamReportButtonTemplate)
+        return SpamReportButtonTemplate[reporttexts];
+    if (reporttexts.length > 0) {
+        const fragment = document.createDocumentFragment();
+        fragment.appendChild(GenerateDot());
+        for (let i = 0; i < reporttexts.length; i++) {
+            const reporttext = reporttexts[i];
 
+            //テキスト
+            let btn = document.createElement("div");
+            btn.setAttribute("dir", "ltr");
+            btn.setAttribute("class", reporttext + " ATS_SpamReportAndBlockElem css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
+            btn.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
+            btn.innerHTML = `<a href="javascript:void(0);"><span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">${reporttext}</span></a>`;
+            fragment.appendChild(btn);
+            if (i != (reporttexts.length - 1)) {
+                fragment.appendChild(GenerateDot());
+            }
+        }
+        SpamReportButtonTemplate[reporttexts] = document.createElement("div");
+        SpamReportButtonTemplate[reporttexts].appendChild(fragment);
+    }
+    return SpamReportButtonTemplate[reporttexts];
 }
 function UpdateSpamReportButton(reply) {
     if (!IsSpamReportAndBlockEnable)
@@ -496,38 +471,26 @@ function UpdateSpamReportButton(reply) {
     names = names[0];
     if (names.children.length > 1)
         return;
-    //テキスト
-    let sbbtn = document.createElement("div");
-    sbbtn.setAttribute("dir", "ltr");
-    sbbtn.setAttribute("class", "ATS_SpamReportAndBlockElem css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
-    sbbtn.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
-    let reporthtml = "📢スパム";
-    sbbtn.innerHTML = `<a href="javascript:void(0);"><span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">${reporthtml}</span></a>`;
+    const buttons = ["📢スパム", "📢攻撃的→センシティブ"];
+    const btns = GetSpamReportButtonTemplate(buttons).cloneNode(true);
     const spamdetail = "金銭的詐欺、悪意のあるリンクのポスト、ハッシュタグの乱用、偽のエンゲージメント、しつこい返信/リポスト/ダイレクトメッセージ";
-    sbbtn.addEventListener("click", function ()
+    btns.getElementsByClassName(buttons[0])[0].addEventListener("click", function ()
     {
         runReport(reply, [spamdetail]);
     });
-    //テキスト
-    let sensbtn = document.createElement("div");
-    sensbtn.setAttribute("dir", "ltr");
-    sensbtn.setAttribute("class", "ATS_SpamReportAndBlockElem css-1rynq56 r-bcqeeo r-qvutc0 r-1tl8opc r-a023e6 r-rjixqe r-16dba41 r-1q142lx r-s1qlax");
-    sensbtn.setAttribute("style", "color: rgb(83, 100, 113); text-overflow: unset;");
     const sensitivedetail = [
         "暴力的出来事の否定、特定の人物への嫌がらせや嫌がらせの扇動",
         "不本意な性的コンテンツや、合意なく個人を性的な対象として見る、露骨な性的対象化は禁止しています"
     ];
-    reporthtml = "📢攻撃的→センシティブ";
-    sensbtn.innerHTML = `<a href="javascript:void(0);"><span class="css-1qaijid r-bcqeeo r-qvutc0 r-1tl8opc" style="text-overflow: unset;">${reporthtml}</span></a>`;
-    sensbtn.addEventListener("click", function () {
+    btns.getElementsByClassName(buttons[1])[0].addEventListener("click", function () {
         runReport(reply, sensitivedetail);
     });
-    names.appendChild(GenerateDot());
-    names.appendChild(sbbtn);
-    names.appendChild(GenerateDot());
-    names.appendChild(sensbtn);
+    let len = btns.childNodes.length;
+    for (let i = 0; i < len; i++) {
+        names.appendChild(btns.childNodes[0]);
+    }
 }
-function RunClickBlockButtonTask(reply) {
+function RunClickBlockButtonTask() {
     let clickBlockButtonTriedCount = 0;
     const clickBlockButtonTask = setInterval(function () {
         //ブロックボタンをクリック
@@ -555,14 +518,13 @@ function RunClickBlockButtonTask(reply) {
                 clearInterval(clickBlockButtonTask);
             }
         }
-    }, 50);
+    }, 10);
 }
 function runReport(reply, details) {
     const menuButton = reply.querySelector('div[data-testid="caret"]');
     const layers = document.getElementById("layers");
     layers.setAttribute("style", layers.getAttribute("style") + "display:none;")
     menuButton.click();
-    let waitedcount = 0;
     setTimeout(function () {
         let Dropdown = document.body.querySelector('.css-175oi2r div[data-testid="Dropdown"]');
         layers.setAttribute("style", layers.getAttribute("style").replace("display:none;", ""))
@@ -590,9 +552,8 @@ function runReport(reply, details) {
         let triedcount = 0;
         const showpopupTask = setInterval(function () {
             const Popup = document.getElementsByClassName("css-175oi2r r-1wbh5a2 r-htvplk r-1udh08x r-1867qdf r-kwpbio r-rsyp9y r-1pjcn9w r-1279nm1");
-            if (Popup.length >= 1 && Popup[0].style.display != "none") {
+            if (Popup.length >= 1 && Popup[0].style.display != "none")
                 Popup[0].style.display = "none";
-            }
             const Buttons = document.getElementsByClassName("css-175oi2r r-1habvwh r-18u37iz r-16y2uox r-1wtj0ep r-16x9es5 r-1dye5f7 r-1f1sjgu r-1l7z4oj r-i023vh r-gy4na3 r-o7ynqc r-6416eg r-1ny4l3l");
             let clicked = false;
             for (let i = 0; i < Buttons.length; i++) {
@@ -625,30 +586,35 @@ function runReport(reply, details) {
                                 getElementsByClassName(
                                     "css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-19yznuf r-64el8z r-1dye5f7 r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"
                                 )[0].click();
-                            RunClickBlockButtonTask(reply);
+                            RunClickBlockButtonTask();
                             clearInterval(processNextPopupTask);
                         } else {
                             triedcount++;
                             if (triedcount >= 30) {
-                                document.querySelector('div[aria-label="閉じる"]')?.click();
+                                const Popup = document.getElementsByClassName("css-175oi2r r-1wbh5a2 r-htvplk r-1udh08x r-1867qdf r-kwpbio r-rsyp9y r-1pjcn9w r-1279nm1");
+                                if (Popup.length >= 1 && Popup[0].style.display != "none")
+                                    Popup[0].style.display = "";
                                 clearInterval(processNextPopupTask);
+                                document.querySelector('div[aria-label="閉じる"]')?.click();
                             }
                         }
-                    }, 50);
+                    }, 10);
                 }
                 else {
-                    RunClickBlockButtonTask(reply);
+                    RunClickBlockButtonTask();
                 }
                 clearInterval(showpopupTask);
             } else {
                 console.log("Failed spam click");
                 triedcount++;
                 if (triedcount >= 30) {
-                    document.querySelector('div[aria-label="閉じる"]')?.click();
+                    if (Popup.length >= 1 && Popup[0].style.display != "none")
+                        Popup[0].style.display = "";
                     clearInterval(showpopupTask);
+                    document.querySelector('div[aria-label="閉じる"]')?.click();
                 }
             }
-        }, 50);
+        }, 10);
     }, 20);
 }
 function UpdateReplyObjects()
@@ -666,6 +632,7 @@ function UpdateReplyObjects()
             UpdateSpamReportButton(replys[i]);
         }
     }
+
     if (!IsTweetAutoProcessing)
         return;
     for (var i = 2; i < replys.length; i++)
@@ -681,14 +648,15 @@ function UpdateReplyObjects()
         //プロモーションならパス
         if (tweetdetail.promoted_content != undefined)
             continue;
-        if (authoruserid == null || authoruserid == undefined)
-            authoruserid = tweetdetail.in_reply_to_screen_name;
-        //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerHTML)
         const userid = tweetdetail.user.screen_name;
         if (userid == null)
             continue;
         if (DoubleTexters.includes(userid))
             continue;
+        if (authoruserid == null || authoruserid == undefined)
+            authoruserid = tweetdetail.in_reply_to_screen_name;
+        //console.log(tweetdetail.user.screen_name + "detail:" + atsdata[0].innerHTML)
+        
         if (CurrentUserIds.includes(userid))
         {
             DoubleTexters.push(userid);
@@ -700,12 +668,11 @@ function UpdateReplyObjects()
         const reply = replys[i];
         if (reply == null)
             continue;
-        const styletemp = reply.getAttribute("style");
-        if (styletemp.indexOf("display:none;") !== -1)
-            continue;
         if (reply?.firstChild?.firstChild == null) {
             continue;
         }
+        if (reply.style.display == "none")
+            continue;
         const atsdata = reply.getElementsByTagName("atsdata");
         if (atsdata.length <= 0)
             continue;
@@ -721,13 +688,17 @@ function UpdateReplyObjects()
             if (isButPageInText(reply, tweetdetail.full_text)) {
                 console.log(tweetdetail.user.name + " was spam! reason:But page Spam");
                 console.log(tweetdetail.user.name + " is @" + tweetdetail.user.screen_name)
-                SetBlockTweet(reply, styletemp, tweetdetail.id_str);
+                SetBlockTweet(reply, tweetdetail.id_str);
             }
             continue;
         }
+        // リプライ者のフォロー中数
         const replyfollowingcount = tweetdetail.user.friends_count;
+        // リプライ者のフォロワー数
         const replyfollowercount = tweetdetail.user.followers_count;
+        // リプライ者のツイート本文
         const replyfulltext = tweetdetail.full_text;
+        // リプライ者のユーザーID
         const userid = tweetdetail.user.screen_name;
         let replyfulltextreplaced = replyfulltext.replace("@" + authoruserid,"");
         const replyurls = tweetdetail.entities.urls;
@@ -735,14 +706,14 @@ function UpdateReplyObjects()
         {
             replyfulltextreplaced = replyfulltextreplaced.replace(replyurls[i2].url,"");
         }
+        // リプライ者がXプレミアムで認証済みか
         const isblueverified = tweetdetail.user.is_blue_verified;
+        // リプライ者が認証済みか
         const verified = tweetdetail.user.verified;
         const userpossibly_sensitive = tweetdetail.user.possibly_sensitive;
         const favorite_count = tweetdetail.favorite_count;
         const requoteExist = tweetdetail.quoted_status != undefined;
         const isDefaultIcon = tweetdetail.user.default_profile_image;
-        if (GetWhiteList().includes(userid))
-            continue;
         let tweetid = tweetdetail.id_str;
         const username = tweetdetail.user.name;
         const tweetTextEl = reply.querySelector('div[data-testid="tweetText"]');
@@ -776,7 +747,7 @@ function UpdateReplyObjects()
         if (isSpamTweet(reply, tweetData))
         {
             console.log(username+" is @"+userid)
-            SetBlockTweet(reply, styletemp, tweetid);
+            SetBlockTweet(reply, tweetid);
             if (isCanMuteTweet(reply, tweetData))
             {
                 if (!MuteTasks.includes(reply))
@@ -865,7 +836,11 @@ function CheckAndUpdateUrl()
         // マッチング
         /** @type {boolean} */
         if (isTweetURL(lastlocation)) {
-            currentObserver = new MutationObserver(UpdateReplyObjects);
+            currentObserver = new MutationObserver(function () {
+                setTimeout(function () {
+                    UpdateReplyObjects();
+                }, 20);
+            });
 
             currentTimeout = window.setTimeout(function () {
                 UpdateReplyObjects();
@@ -942,14 +917,7 @@ chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== "local") {
         return;
     }
-
-    // changesは変更したプロパティの配列
-    if ("Whitelist" in changes) {
-        if (changes.Whitelist)
-            whiteList = changes.Whitelist.newValue.split('@');
-        else
-            whiteList = [];
-    }
+    
     if ("BlockedTweetCount" in changes) {
         if (changes.BlockedTweetCount)
             BlockedTweetCount = changes.BlockedTweetCount.newValue;

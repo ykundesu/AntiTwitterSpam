@@ -10,6 +10,7 @@ function addwhite() {
 let isblocktaskended = true;
 let lastblocked = -1;
 window.addEventListener('DOMContentLoaded', function () {
+    UpdateDetail();
     UpdatePopup();
     setInterval(() => {
         if (isblocktaskended)
@@ -45,13 +46,6 @@ window.addEventListener('DOMContentLoaded', function () {
     });
     SpamCope.onchange = function () {
         chrome.storage.local.set({ SpamCope: this.value });
-        /*
-        if (this.value != "None")
-            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "");
-        else
-        {
-            IsTweetHideAuthorOnly.parentElement.setAttribute("style", "display:none;");
-        }*/
     };
 
 
@@ -78,13 +72,29 @@ window.addEventListener('DOMContentLoaded', function () {
         chrome.storage.local.set({ IsSpamReportAndBlockEnable: this.checked });
     };
 
-
-    /*
-    document.getElementById('addw').addEventListener('click',
-        addwhite);
-    document.getElementById('clearbtn').addEventListener('click',
-        ClearWhiteList);*/
+    const IsShowBlockedBadge = document.getElementById("IsShowBlockedBadge");
+    chrome.storage.local.get("IsShowBlockedBadge", function (nowIsShowBlockedBadge) {
+        if (nowIsShowBlockedBadge.IsShowBlockedBadge == null)
+            nowIsShowBlockedBadge = false;
+        else
+            nowIsShowBlockedBadge = nowIsShowBlockedBadge.IsShowBlockedBadge;
+        IsShowBlockedBadge.checked = nowIsShowBlockedBadge;
+    });
+    IsShowBlockedBadge.onchange = function () {
+        chrome.storage.local.set({ IsShowBlockedBadge: this.checked });
+    }
 });
+function UpdateDetail() {
+    const manifest = chrome.runtime.getManifest();
+    document.getElementById("Detail_name").innerText = manifest.name;
+    document.getElementById("Detail_version").innerText = `v${manifest.version}`;
+    const manifest_version = manifest.manifest_version;
+    document.getElementById("Detail_edition").innerText = (manifest_version == 2 ? "Firefox" : "Chrome") + "”Å(manifestv" + manifest_version + ")";
+    let ReviewURL = "https://chromewebstore.google.com/detail/anti-twitterspam/kidepcmgoakfaefpgjkmkkkmcidneffo";
+    if (manifest_version == 2)
+        ReviewURL = "https://addons.mozilla.org/ja/firefox/addon/anti-twitterspam/";
+    document.getElementById("Detail_review").setAttribute("href", ReviewURL);
+}
 async function UpdateBlocked()
 {
     isblocktaskended = false;
