@@ -4,7 +4,7 @@ function UpdateBlockedCount() {
     //バッジのサイズを変更
     if (Blocked > 999)
         chrome.browserAction.setBadgeText({ text: "999+" });
-    else if (Blocked > 99)
+    else
         chrome.browserAction.setBadgeText({ text: Blocked.toString() });
 }
 async function UpdateBlocked() {
